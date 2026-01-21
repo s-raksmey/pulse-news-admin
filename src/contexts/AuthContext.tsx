@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getGqlClient } from '@/services/graphql-client';
+import { getGqlClient, getAuthenticatedGqlClient } from '@/services/graphql-client';
 import { gql } from 'graphql-request';
 
 // Types
@@ -11,7 +11,7 @@ export interface User {
   name: string;
   role: 'ADMIN' | 'EDITOR' | 'AUTHOR';
   isActive: boolean;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface AuthResponse {
@@ -75,7 +75,6 @@ const REGISTER_MUTATION = gql`
         name
         role
         isActive
-        createdAt
       }
     }
   }
@@ -92,7 +91,6 @@ const ME_QUERY = gql`
         name
         role
         isActive
-        createdAt
       }
     }
   }
@@ -218,19 +216,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const authResponse = response.register;
 
-      if (authResponse.success && authResponse.token && authResponse.user) {
-        // Store token and user data
+      if (authResponse.success && authResponse.token) {
+        // Store token first
         setStoredToken(authResponse.token);
         setToken(authResponse.token);
-        setUser(authResponse.user);
+
+        // If user data is available, use it
+        if (authResponse.user) {
+          setUser(authResponse.user);
+        } else {
+          // If user is null (due to server error), try to fetch user data using the token
+          try {
+            const authenticatedClient = getAuthenticatedGqlClient(authResponse.token);
+            const meResponse = await authenticatedClient.request<{ me: { success: boolean; user?: User } }>(ME_QUERY);
+            
+            if (meResponse.me.success && meResponse.me.user) {
+              setUser(meResponse.me.user);
+            }
+          } catch (meError) {
+            console.warn('Could not fetch user data after registration:', meError);
+            // Registration was successful, but we couldn't get user data
+            // This is not a critical error - user can still proceed
+          }
+        }
       }
 
       return authResponse;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Register error:', error);
+      
+      // Check if this is a GraphQL error with partial success
+      if (error.response?.data?.register?.success && error.response?.data?.register?.token) {
+        // Registration was successful despite GraphQL errors
+        const partialResponse = error.response.data.register;
+        setStoredToken(partialResponse.token);
+        setToken(partialResponse.token);
+        
+        // Try to fetch user data with the token
+        try {
+          const authenticatedClient = getAuthenticatedGqlClient(partialResponse.token);
+          const meResponse = await authenticatedClient.request<{ me: { success: boolean; user?: User } }>(ME_QUERY);
+          
+          if (meResponse.me.success && meResponse.me.user) {
+            setUser(meResponse.me.user);
+          }
+        } catch (meError) {
+          console.warn('Could not fetch user data after registration:', meError);
+        }
+        
+        return {
+          success: true,
+          message: partialResponse.message || 'Registration successful',
+          token: partialResponse.token,
+        };
+      }
+      
       return {
         success: false,
-        message: 'Network error occurred. Please try again.',
+        message: error.response?.errors?.[0]?.message || 'Registration failed. Please try again.',
       };
     } finally {
       setIsLoading(false);
