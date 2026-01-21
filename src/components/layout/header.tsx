@@ -32,18 +32,48 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { MobileNavTrigger } from "./mobile-nav";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HeaderProps {
   onMobileNavOpen: (open: boolean) => void;
 }
 
 export function Header({ onMobileNavOpen }: HeaderProps) {
+  const { user, logout } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
     // Here you would implement actual dark mode toggle logic
+  };
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Get role badge color
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'bg-red-100 text-red-800';
+      case 'EDITOR':
+        return 'bg-blue-100 text-blue-800';
+      case 'AUTHOR':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
@@ -215,12 +245,20 @@ export function Header({ onMobileNavOpen }: HeaderProps) {
                 <Avatar className="h-7 w-7">
                   <AvatarImage src="/placeholder-avatar.jpg" />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs">
-                    AU
+                    {user ? getUserInitials(user.name) : 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium text-slate-900">Admin User</p>
-                  <p className="text-xs text-slate-500">admin@pulsenews.com</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-slate-900">{user?.name || 'User'}</p>
+                    <Badge 
+                      variant="secondary" 
+                      className={`text-xs px-1.5 py-0.5 ${getRoleBadgeColor(user?.role || '')}`}
+                    >
+                      {user?.role || 'USER'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500">{user?.email || 'user@example.com'}</p>
                 </div>
                 <ChevronDown className="h-3 w-3 text-slate-500 hidden md:block" />
               </Button>
@@ -228,8 +266,16 @@ export function Header({ onMobileNavOpen }: HeaderProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">Admin User</p>
-                  <p className="text-xs text-slate-500">admin@pulsenews.com</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">{user?.name || 'User'}</p>
+                    <Badge 
+                      variant="secondary" 
+                      className={`text-xs px-1.5 py-0.5 ${getRoleBadgeColor(user?.role || '')}`}
+                    >
+                      {user?.role || 'USER'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500">{user?.email || 'user@example.com'}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -242,7 +288,10 @@ export function Header({ onMobileNavOpen }: HeaderProps) {
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600">
+              <DropdownMenuItem 
+                className="cursor-pointer text-red-600 focus:text-red-600"
+                onClick={handleLogout}
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign out
               </DropdownMenuItem>

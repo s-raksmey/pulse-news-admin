@@ -37,7 +37,7 @@ export default function NotFound() {
       transition: {
         duration: 3,
         repeat: Infinity,
-        ease: "easeInOut"
+        ease: [0.4, 0, 0.6, 1] as const
       }
     }
   };
@@ -87,7 +87,7 @@ export default function NotFound() {
           className="flex flex-col sm:flex-row gap-4 justify-center items-center"
         >
           <Link href="/">
-            <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200">
+            <Button size="default" className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-3">
               <Home className="w-4 h-4 mr-2" />
               Back to Dashboard
             </Button>
@@ -95,9 +95,9 @@ export default function NotFound() {
           
           <Button 
             variant="outline" 
-            size="lg" 
+            size="default" 
             onClick={() => window.history.back()}
-            className="w-full sm:w-auto border-slate-300 hover:bg-slate-50"
+            className="w-full sm:w-auto border-slate-300 hover:bg-slate-50 px-6 py-3"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Go Back
