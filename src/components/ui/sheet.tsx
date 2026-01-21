@@ -1,0 +1,118 @@
+"use client"
+
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { X } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const Sheet = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }
+>(({ className, open, onOpenChange, children, ...props }, ref) => {
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) {
+        onOpenChange?.(false)
+      }
+    }
+    
+    if (open) {
+      document.addEventListener("keydown", handleEscape)
+      document.body.style.overflow = "hidden"
+    }
+    
+    return () => {
+      document.removeEventListener("keydown", handleEscape)
+      document.body.style.overflow = "unset"
+    }
+  }, [open, onOpenChange])
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50">
+      {/* Overlay */}
+      <div
+        className="fixed inset-0 bg-black/50"
+        onClick={() => onOpenChange?.(false)}
+      />
+      
+      {/* Sheet */}
+      <div
+        ref={ref}
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 h-full w-3/4 max-w-sm bg-white p-6 shadow-lg transition-transform duration-300 ease-in-out sm:max-w-sm",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </div>
+    </div>
+  )
+})
+Sheet.displayName = "Sheet"
+
+const SheetClose = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, ...props }, ref) => (
+  <button
+    ref={ref}
+    className={cn(
+      "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:pointer-events-none",
+      className
+    )}
+    {...props}
+  >
+    <X className="h-4 w-4" />
+    <span className="sr-only">Close</span>
+  </button>
+))
+SheetClose.displayName = "SheetClose"
+
+const SheetContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, children, ...props }, ref) => (
+  <div ref={ref} className={cn("flex h-full flex-col", className)} {...props}>
+    {children}
+  </div>
+))
+SheetContent.displayName = "SheetContent"
+
+const SheetHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-2 text-center sm:text-left", className)}
+    {...props}
+  />
+))
+SheetHeader.displayName = "SheetHeader"
+
+const SheetTitle = React.forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h2
+    ref={ref}
+    className={cn("text-lg font-semibold text-slate-950", className)}
+    {...props}
+  />
+))
+SheetTitle.displayName = "SheetTitle"
+
+export {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+}

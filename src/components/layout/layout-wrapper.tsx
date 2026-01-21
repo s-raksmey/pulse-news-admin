@@ -1,0 +1,66 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Sidebar } from "./sidebar";
+import { Header } from "./header";
+import { MobileNav } from "./mobile-nav";
+
+interface LayoutWrapperProps {
+  children: React.ReactNode;
+}
+
+export function LayoutWrapper({ children }: LayoutWrapperProps) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block">
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+      </div>
+
+      {/* Mobile Navigation */}
+      <MobileNav open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
+
+      {/* Main Content */}
+      <motion.div
+        initial={false}
+        animate={{
+          marginLeft: isMobile ? 0 : (sidebarCollapsed ? 80 : 280),
+        }}
+        transition={{
+          duration: 0.3,
+          ease: [0.4, 0, 0.2, 1],
+        }}
+        className="min-h-screen"
+      >
+        {/* Header */}
+        <Header onMobileNavOpen={setMobileNavOpen} />
+
+        {/* Page Content */}
+        <main className="flex-1 p-4 md:p-6">
+          <div className="mx-auto max-w-7xl">
+            {children}
+          </div>
+        </main>
+      </motion.div>
+    </div>
+  );
+}
