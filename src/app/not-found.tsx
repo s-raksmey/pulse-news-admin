@@ -1,12 +1,149 @@
+"use client";
+
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { 
+  Home, 
+  ArrowLeft, 
+  Search, 
+  FileText, 
+  LayoutDashboard,
+  AlertTriangle 
+} from "lucide-react";
 
 export default function NotFound() {
+  const containerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  };
+
+  const floatingVariants = {
+    animate: {
+      y: [-10, 10, -10],
+      transition: {
+        duration: 3,
+        repeat: Infinity,
+        ease: "easeInOut"
+      }
+    }
+  };
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-20 text-center space-y-4">
-      <h1 className="text-3xl font-bold">404</h1>
-      <p className="text-slate-600">Page not found.</p>
-      <Link href="/"><Button>Go Home</Button></Link>
-    </main>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="max-w-2xl w-full text-center space-y-8"
+      >
+        {/* Animated 404 Number */}
+        <motion.div
+          variants={floatingVariants}
+          animate="animate"
+          className="relative"
+        >
+          <motion.h1 
+            variants={itemVariants}
+            className="text-8xl md:text-9xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 select-none"
+          >
+            404
+          </motion.h1>
+          <motion.div
+            variants={itemVariants}
+            className="absolute -top-4 -right-4 text-yellow-500"
+          >
+            <AlertTriangle className="w-8 h-8 md:w-12 md:h-12" />
+          </motion.div>
+        </motion.div>
+
+        {/* Error Message */}
+        <motion.div variants={itemVariants} className="space-y-4">
+          <h2 className="text-2xl md:text-3xl font-semibold text-slate-800">
+            Oops! Page Not Found
+          </h2>
+          <p className="text-lg text-slate-600 max-w-md mx-auto">
+            The page you're looking for seems to have wandered off into the digital void. 
+            Don't worry, it happens to the best of us!
+          </p>
+        </motion.div>
+
+        {/* Action Buttons */}
+        <motion.div 
+          variants={itemVariants}
+          className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+        >
+          <Link href="/">
+            <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200">
+              <Home className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </Link>
+          
+          <Button 
+            variant="outline" 
+            size="lg" 
+            onClick={() => window.history.back()}
+            className="w-full sm:w-auto border-slate-300 hover:bg-slate-50"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
+        </motion.div>
+
+        {/* Quick Links Card */}
+        <motion.div variants={itemVariants}>
+          <Card className="bg-white/70 backdrop-blur-sm border-slate-200 shadow-lg">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                Quick Links
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Link href="/" className="group">
+                  <div className="flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors duration-200">
+                    <LayoutDashboard className="w-5 h-5 text-blue-600 mr-3 group-hover:scale-110 transition-transform duration-200" />
+                    <span className="text-sm font-medium text-slate-700">Dashboard</span>
+                  </div>
+                </Link>
+                
+                <Link href="/articles" className="group">
+                  <div className="flex items-center p-3 rounded-lg hover:bg-green-50 transition-colors duration-200">
+                    <FileText className="w-5 h-5 text-green-600 mr-3 group-hover:scale-110 transition-transform duration-200" />
+                    <span className="text-sm font-medium text-slate-700">Articles</span>
+                  </div>
+                </Link>
+                
+                <div className="group cursor-pointer">
+                  <div className="flex items-center p-3 rounded-lg hover:bg-purple-50 transition-colors duration-200">
+                    <Search className="w-5 h-5 text-purple-600 mr-3 group-hover:scale-110 transition-transform duration-200" />
+                    <span className="text-sm font-medium text-slate-700">Search</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Help Text */}
+        <motion.div variants={itemVariants}>
+          <p className="text-sm text-slate-500">
+            If you believe this is an error, please contact the administrator or try refreshing the page.
+          </p>
+        </motion.div>
+      </motion.div>
+    </div>
   );
 }

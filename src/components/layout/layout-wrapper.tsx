@@ -55,8 +55,8 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
         <Header onMobileNavOpen={setMobileNavOpen} />
 
         {/* Page Content */}
-        <main className="flex-1 p-4 md:p-6">
-          <div className="mx-auto max-w-7xl">
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl space-y-6">
             {children}
           </div>
         </main>

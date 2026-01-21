@@ -1,9 +1,36 @@
 "use client";
 
-import { Bell, Search, User } from "lucide-react";
+import { useState } from "react";
+import { 
+  Bell, 
+  Search, 
+  User, 
+  Settings, 
+  LogOut, 
+  Moon, 
+  Sun, 
+  Globe,
+  ChevronDown,
+  MessageSquare,
+  Activity
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { MobileNavTrigger } from "./mobile-nav";
 
 interface HeaderProps {
@@ -11,51 +38,218 @@ interface HeaderProps {
 }
 
 export function Header({ onMobileNavOpen }: HeaderProps) {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+    // Here you would implement actual dark mode toggle logic
+  };
+
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 px-4 md:px-6">
-      {/* Mobile nav trigger */}
-      <MobileNavTrigger onOpenChange={onMobileNavOpen} />
+    <TooltipProvider>
+      <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 px-4 md:px-6 shadow-sm">
+        {/* Mobile nav trigger */}
+        <MobileNavTrigger onOpenChange={onMobileNavOpen} />
 
-      {/* Search */}
-      <div className="flex-1 max-w-md">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-          <input
-            type="search"
-            placeholder="Search articles, users..."
-            className="w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 py-2 text-sm placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+        {/* Logo/Brand - Hidden on mobile */}
+        <div className="hidden lg:flex items-center gap-2 mr-4">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">PN</span>
+          </div>
+          <span className="font-semibold text-slate-800">Pulse News</span>
         </div>
-      </div>
 
-      {/* Right side actions */}
-      <div className="flex items-center gap-2">
-        {/* Notifications */}
-        <Button variant="outline" size="sm" className="relative h-9 w-9 p-0">
-          <Bell className="h-4 w-4" />
-          <Badge
-            variant="destructive"
-            className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs"
-          >
-            3
-          </Badge>
-          <span className="sr-only">Notifications</span>
-        </Button>
-
-        {/* User profile */}
-        <div className="flex items-center gap-2">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src="/placeholder-avatar.jpg" />
-            <AvatarFallback>
-              <User className="h-4 w-4" />
-            </AvatarFallback>
-          </Avatar>
-          <div className="hidden md:block">
-            <p className="text-sm font-medium text-slate-900">Admin User</p>
-            <p className="text-xs text-slate-500">admin@pulsenews.com</p>
+        {/* Search */}
+        <div className="flex-1 max-w-md">
+          <div className="relative">
+            <Search className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors duration-200 ${
+              searchFocused ? 'text-blue-500' : 'text-slate-500'
+            }`} />
+            <input
+              type="search"
+              placeholder="Search articles, users, categories..."
+              className={`w-full rounded-lg border bg-white pl-10 pr-4 py-2.5 text-sm placeholder:text-slate-500 transition-all duration-200 ${
+                searchFocused 
+                  ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-sm' 
+                  : 'border-slate-200 hover:border-slate-300'
+              }`}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+            />
           </div>
         </div>
-      </div>
-    </header>
+
+        {/* Right side actions */}
+        <div className="flex items-center gap-2">
+          {/* Quick Actions - Hidden on small screens */}
+          <div className="hidden xl:flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                  <Activity className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Analytics</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                  <MessageSquare className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Comments</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+
+          {/* Language Selector */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                <Globe className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuLabel>Language</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <span className="mr-2">🇺🇸</span>
+                English
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <span className="mr-2">🇰🇭</span>
+                ខ្មែរ
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Theme Toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-9 w-9 p-0"
+                onClick={toggleDarkMode}
+              >
+                {isDarkMode ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{isDarkMode ? 'Light mode' : 'Dark mode'}</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Notifications */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="relative h-9 w-9 p-0">
+                <Bell className="h-4 w-4" />
+                <Badge
+                  variant="destructive"
+                  className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs animate-pulse"
+                >
+                  3
+                </Badge>
+                <span className="sr-only">Notifications</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                Notifications
+                <Badge variant="secondary" className="text-xs">3 new</Badge>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="max-h-64 overflow-y-auto">
+                <DropdownMenuItem className="flex-col items-start p-4 cursor-pointer">
+                  <div className="flex items-center gap-2 w-full">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="font-medium text-sm">New article published</span>
+                    <span className="text-xs text-slate-500 ml-auto">2m ago</span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1">
+                    "Breaking News: Tech Innovation" has been published successfully.
+                  </p>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex-col items-start p-4 cursor-pointer">
+                  <div className="flex items-center gap-2 w-full">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="font-medium text-sm">Comment approved</span>
+                    <span className="text-xs text-slate-500 ml-auto">5m ago</span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1">
+                    A comment on "Latest Updates" has been approved.
+                  </p>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex-col items-start p-4 cursor-pointer">
+                  <div className="flex items-center gap-2 w-full">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                    <span className="font-medium text-sm">System update</span>
+                    <span className="text-xs text-slate-500 ml-auto">1h ago</span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1">
+                    System maintenance completed successfully.
+                  </p>
+                </DropdownMenuItem>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-center text-sm text-blue-600 cursor-pointer">
+                View all notifications
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* User profile dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2 h-9 px-2">
+                <Avatar className="h-7 w-7">
+                  <AvatarImage src="/placeholder-avatar.jpg" />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs">
+                    AU
+                  </AvatarFallback>
+                </Avatar>
+                <div className="hidden md:block text-left">
+                  <p className="text-sm font-medium text-slate-900">Admin User</p>
+                  <p className="text-xs text-slate-500">admin@pulsenews.com</p>
+                </div>
+                <ChevronDown className="h-3 w-3 text-slate-500 hidden md:block" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium">Admin User</p>
+                  <p className="text-xs text-slate-500">admin@pulsenews.com</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600">
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+    </TooltipProvider>
   );
 }
