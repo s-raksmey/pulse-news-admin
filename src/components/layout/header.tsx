@@ -243,7 +243,7 @@ export function Header({ onMobileNavOpen }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 h-9 px-2">
                 <Avatar className="h-7 w-7">
-                  <AvatarImage src="/placeholder-avatar.jpg" />
+                  <AvatarImage src="/avatar.png" />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs">
                     {user ? getUserInitials(user.name) : 'U'}
                   </AvatarFallback>
