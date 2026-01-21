@@ -3,7 +3,8 @@ import type { Metadata } from "next"
 import { cookies } from "next/headers"
 import "./globals.css"
 import { fontKhmerDigital } from "@/lib/font"
-import { LayoutWrapper } from "@/components/layout/layout-wrapper"
+import { AuthProvider } from "@/contexts/AuthContext"
+import { ClientLayoutWrapper } from "@/components/layout/client-layout-wrapper"
 
 export const metadata: Metadata = {
   title: "Pulse News Admin",
@@ -22,9 +23,11 @@ export default async function RootLayout({
   return (
     <html lang={locale} data-locale={locale} className={fontKhmerDigital.variable}>
       <body className={`min-h-screen bg-slate-50 text-slate-900 antialiased ${fontKhmerDigital.className}`}>
-        <LayoutWrapper>
-          {children}
-        </LayoutWrapper>
+        <AuthProvider>
+          <ClientLayoutWrapper>
+            {children}
+          </ClientLayoutWrapper>
+        </AuthProvider>
       </body>
     </html>
   )

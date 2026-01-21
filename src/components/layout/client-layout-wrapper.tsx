@@ -1,0 +1,73 @@
+"use client";
+
+import { useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { LayoutWrapper } from './layout-wrapper';
+
+interface ClientLayoutWrapperProps {
+  children: React.ReactNode;
+}
+
+export function ClientLayoutWrapper({ children }: ClientLayoutWrapperProps) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Public routes that don't require authentication
+  const publicRoutes = ['/login'];
+  const isPublicRoute = publicRoutes.includes(pathname);
+
+  useEffect(() => {
+    // Don't redirect while loading
+    if (isLoading) return;
+
+    // If not authenticated and trying to access protected route
+    if (!isAuthenticated && !isPublicRoute) {
+      router.push('/login');
+      return;
+    }
+
+    // If authenticated and on login page, redirect to dashboard
+    if (isAuthenticated && pathname === '/login') {
+      router.push('/');
+      return;
+    }
+  }, [isAuthenticated, isLoading, isPublicRoute, pathname, router]);
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // For public routes (like login), render without layout wrapper
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
+
+  // For protected routes, ensure user is authenticated
+  if (!isAuthenticated) {
+    // This will be handled by the useEffect redirect, but just in case
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-slate-600">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render with full layout for authenticated users
+  return (
+    <LayoutWrapper>
+      {children}
+    </LayoutWrapper>
+  );
+}
