@@ -2,7 +2,7 @@
 
 export type UserRole = 'ADMIN' | 'EDITOR' | 'AUTHOR';
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
-export type UserSortBy = 'name' | 'email' | 'role' | 'createdAt' | 'updatedAt';
+export type UserSortBy = 'name' | 'email' | 'role' | 'createdAt';
 export type SortOrder = 'asc' | 'desc';
 
 export interface User {
@@ -12,7 +12,6 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   createdAt: string;
-  updatedAt?: string;
 }
 
 export interface UserListFilters {
@@ -129,4 +128,3 @@ export interface BulkActionState {
   isProcessing: boolean;
   action: 'role' | 'status' | null;
 }
-
