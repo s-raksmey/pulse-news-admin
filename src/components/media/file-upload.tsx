@@ -43,6 +43,7 @@ export function FileUpload({
 }: FileUploadProps) {
   const [uploadProgress, setUploadProgress] = useState<MediaUploadProgress[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const uploadFile = async (file: File): Promise<MediaFile> => {
     const formData = new FormData();
@@ -131,8 +132,23 @@ export function FileUpload({
   }, [options, onUploadComplete, onUploadProgress]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    handleUpload(acceptedFiles);
-  }, [handleUpload]);
+    setSelectedFiles(prev => [...prev, ...acceptedFiles]);
+  }, []);
+
+  const handleManualUpload = () => {
+    if (selectedFiles.length > 0) {
+      handleUpload(selectedFiles);
+      setSelectedFiles([]);
+    }
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const clearSelectedFiles = () => {
+    setSelectedFiles([]);
+  };
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
@@ -182,9 +198,69 @@ export function FileUpload({
                 Maximum {maxFiles} files
               </p>
             )}
+            {selectedFiles.length > 0 && (
+              <p className="text-sm text-blue-600 mt-2 font-medium">
+                {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
+              </p>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Selected Files */}
+      {selectedFiles.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-slate-900">Selected Files</h4>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleManualUpload}
+                disabled={isUploading}
+                className="flex items-center gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                Upload {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={clearSelectedFiles}
+                disabled={isUploading}
+              >
+                Clear All
+              </Button>
+            </div>
+          </div>
+          
+          <div className="grid gap-2">
+            {selectedFiles.map((file, index) => (
+              <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+                <div className="flex items-center space-x-3">
+                  <div className="text-slate-400">
+                    {getFileIcon(file.type)}
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-900 truncate max-w-xs">
+                      {file.name}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {formatFileSize(file.size)}
+                    </p>
+                  </div>
+                </div>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeSelectedFile(index)}
+                  disabled={isUploading}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Upload Progress */}
       {uploadProgress.length > 0 && (

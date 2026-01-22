@@ -265,6 +265,70 @@ export async function GET(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const fileId = searchParams.get('id');
+    const filename = searchParams.get('filename');
+    
+    if (!fileId || !filename) {
+      return NextResponse.json(
+        { success: false, message: "File ID and filename are required" },
+        { status: 400 }
+      );
+    }
+    
+    // Find and delete the file
+    const uploadDir = path.join(process.cwd(), "public/uploads");
+    
+    // Search for the file in the upload directory and subdirectories
+    const findAndDeleteFile = (dir: string): boolean => {
+      if (!fs.existsSync(dir)) return false;
+      
+      const items = fs.readdirSync(dir, { withFileTypes: true });
+      
+      for (const item of items) {
+        const itemPath = path.join(dir, item.name);
+        
+        if (item.isDirectory()) {
+          // Recursively search in subdirectories
+          if (findAndDeleteFile(itemPath)) return true;
+        } else if (item.isFile() && item.name === filename) {
+          // Found the file, delete it
+          fs.unlinkSync(itemPath);
+          return true;
+        }
+      }
+      
+      return false;
+    };
+    
+    const fileDeleted = findAndDeleteFile(uploadDir);
+    
+    if (!fileDeleted) {
+      return NextResponse.json(
+        { success: false, message: "File not found" },
+        { status: 404 }
+      );
+    }
+    
+    // TODO: Remove from database
+    // await deleteMediaFile(fileId);
+    
+    return NextResponse.json({
+      success: true,
+      message: "File deleted successfully",
+    });
+    
+  } catch (error) {
+    console.error("Delete error:", error);
+    return NextResponse.json(
+      { success: false, message: "Failed to delete file" },
+      { status: 500 }
+    );
+  }
+}
+
 function getMimeTypeFromExtension(ext: string): string {
   const mimeTypes: Record<string, string> = {
     '.jpg': 'image/jpeg',
