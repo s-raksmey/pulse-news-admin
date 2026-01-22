@@ -2,50 +2,104 @@
 
 import { useState, useEffect } from "react";
 import { useCategories } from "@/hooks/useGraphQL";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2 } from "lucide-react";
-import { ArticleCategory } from "@/types/article";
+import { CategoryList } from "@/components/categories/CategoryList";
+import { CategoryForm, CategoryFormData } from "@/components/categories/CategoryForm";
+import { Category, M_CREATE_CATEGORY, M_UPDATE_CATEGORY, M_DELETE_CATEGORY } from "@/services/category.gql";
+import { getGqlClient } from "@/services/graphql-client";
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<ArticleCategory[]>([]);
-  const [isCreating, setIsCreating] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const { getCategories, loading, error } = useCategories();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { getCategories, loading: categoriesLoading } = useCategories();
+  const client = getGqlClient();
 
   useEffect(() => {
     loadCategories();
   }, []);
 
   const loadCategories = async () => {
-    const response = await getCategories();
-    if (response?.categories) {
-      setCategories(response.categories);
+    try {
+      setError(null);
+      const response = await getCategories();
+      if (response?.categories) {
+        setCategories(response.categories);
+      }
+    } catch (err) {
+      console.error('Error loading categories:', err);
+      setError('Failed to load categories');
     }
   };
 
-  const handleCreateCategory = async () => {
-    if (!newCategoryName.trim()) return;
-    
-    // For now, we'll just show the UI. The backend doesn't have category creation mutations yet.
-    // This would need to be implemented in the GraphQL schema
-    console.log('Creating category:', newCategoryName);
-    setNewCategoryName("");
-    setIsCreating(false);
+  const handleCreate = () => {
+    setEditingCategory(null);
+    setShowForm(true);
   };
 
-  const slugify = (name: string) => {
-    return name
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-");
+  const handleEdit = (category: Category) => {
+    setEditingCategory(category);
+    setShowForm(true);
   };
 
-  if (loading && categories.length === 0) {
+  const handleFormSubmit = async (data: CategoryFormData) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (editingCategory) {
+        // Update existing category
+        await client.request(M_UPDATE_CATEGORY, {
+          id: editingCategory.id,
+          input: data
+        });
+      } else {
+        // Create new category
+        await client.request(M_CREATE_CATEGORY, {
+          input: data
+        });
+      }
+
+      // Reload categories and close form
+      await loadCategories();
+      setShowForm(false);
+      setEditingCategory(null);
+    } catch (err: any) {
+      console.error('Error saving category:', err);
+      setError(err.message || 'Failed to save category');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (category: Category) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await client.request(M_DELETE_CATEGORY, {
+        id: category.id
+      });
+
+      // Reload categories
+      await loadCategories();
+    } catch (err: any) {
+      console.error('Error deleting category:', err);
+      setError(err.message || 'Failed to delete category');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFormCancel = () => {
+    setShowForm(false);
+    setEditingCategory(null);
+    setError(null);
+  };
+
+  if (categoriesLoading && categories.length === 0) {
     return (
       <div className="space-y-6">
         <div className="mb-8">
@@ -56,122 +110,49 @@ export default function CategoriesPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Categories</h1>
-          <p className="text-red-600">Error: {error}</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Categories</h1>
-          <p className="text-slate-600">Organize your content with categories.</p>
-        </div>
-        <Button onClick={() => setIsCreating(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Category
-        </Button>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Categories</h1>
+        <p className="text-slate-600">Organize your content with categories.</p>
       </div>
 
-      {/* Create Category Form */}
-      {isCreating && (
-        <Card className="p-4">
-          <h3 className="text-lg font-semibold mb-4">Create New Category</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Category Name
-              </label>
-              <Input
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Enter category name"
-                className="max-w-md"
-              />
-              {newCategoryName && (
-                <p className="text-xs text-slate-500 mt-1">
-                  Slug: {slugify(newCategoryName)}
-                </p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={handleCreateCategory} disabled={!newCategoryName.trim()}>
-                Create Category
-              </Button>
-              <Button variant="outline" onClick={() => {
-                setIsCreating(false);
-                setNewCategoryName("");
-              }}>
-                Cancel
-              </Button>
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <div className="text-red-600 text-sm">⚠️</div>
+            <div className="ml-3">
+              <h4 className="text-sm font-medium text-red-900">Error</h4>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
             </div>
           </div>
-        </Card>
+        </div>
+      )}
+
+      {/* Category Form */}
+      {showForm && (
+        <div className="bg-white rounded-lg border border-slate-200 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">
+            {editingCategory ? 'Edit Category' : 'Create New Category'}
+          </h2>
+          <CategoryForm
+            category={editingCategory}
+            onSubmit={handleFormSubmit}
+            onCancel={handleFormCancel}
+            isLoading={isLoading}
+          />
+        </div>
       )}
 
       {/* Categories List */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {categories.map((category) => (
-          <Card key={category.id} className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="font-semibold text-slate-900">{category.name}</h3>
-                <p className="text-sm text-slate-500 mt-1">/{category.slug}</p>
-                {category.createdAt && (
-                  <p className="text-xs text-slate-400 mt-2">
-                    Created {new Date(category.createdAt).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm">
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {categories.length === 0 && !loading && (
-        <Card className="p-8 text-center">
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">
-            No Categories Yet
-          </h2>
-          <p className="text-slate-600 mb-4">
-            Create your first category to start organizing your content.
-          </p>
-          <Button onClick={() => setIsCreating(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create First Category
-          </Button>
-        </Card>
-      )}
-
-      {/* Note about backend implementation */}
-      <Card className="p-4 bg-blue-50 border-blue-200">
-        <div className="flex items-start gap-3">
-          <div className="text-blue-600 text-sm">ℹ️</div>
-          <div>
-            <h4 className="text-sm font-medium text-blue-900">Implementation Note</h4>
-            <p className="text-sm text-blue-700 mt-1">
-              Category creation and editing functionality requires additional GraphQL mutations 
-              to be implemented in the backend. Currently, you can view existing categories 
-              that are seeded in the database.
-            </p>
-          </div>
-        </div>
-      </Card>
+      <CategoryList
+        categories={categories}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onCreate={handleCreate}
+        isLoading={isLoading}
+      />
     </div>
   );
 }
