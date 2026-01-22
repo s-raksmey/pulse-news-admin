@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { FileText, Video, Music, File, Download, Trash2, Edit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { cn } from '@/lib/utils';
 import type { MediaFile } from '@/types/media';
 
@@ -54,10 +55,26 @@ export function MediaGrid({
   selectable = false,
   className,
 }: MediaGridProps) {
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    file: MediaFile | null;
+  }>({ open: false, file: null });
+
   const handleFileClick = (file: MediaFile) => {
     if (selectable && onFileSelect) {
       onFileSelect(file);
     }
+  };
+
+  const handleDeleteClick = (file: MediaFile) => {
+    setDeleteDialog({ open: true, file });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteDialog.file && onFileDelete) {
+      onFileDelete(deleteDialog.file);
+    }
+    setDeleteDialog({ open: false, file: null });
   };
 
   const handleDownload = (file: MediaFile) => {
@@ -152,7 +169,7 @@ export function MediaGrid({
                       variant="destructive"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onFileDelete(file);
+                        handleDeleteClick(file);
                       }}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -221,5 +238,16 @@ export function MediaGrid({
         );
       })}
     </div>
+
+    <ConfirmationDialog
+      open={deleteDialog.open}
+      onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
+      title="Delete File?"
+      description="Are you sure you want to delete this file? This action cannot be undone."
+      confirmText="Delete"
+      cancelText="Cancel"
+      variant="destructive"
+      onConfirm={handleDeleteConfirm}
+    />
   );
 }

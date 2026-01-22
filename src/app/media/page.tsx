@@ -118,9 +118,24 @@ export default function MediaPage() {
   };
 
   const handleFileDelete = async (file: MediaFile) => {
-    if (confirm(`Are you sure you want to delete "${file.originalName}"?`)) {
-      // TODO: Implement delete API
-      setFiles(prev => prev.filter(f => f.id !== file.id));
+    try {
+      const response = await fetch(`/api/media/upload?id=${file.id}&filename=${file.filename}`, {
+        method: 'DELETE',
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setFiles(prev => prev.filter(f => f.id !== file.id));
+        // Show success message (you can add toast notification here)
+        console.log('File deleted successfully');
+      } else {
+        console.error('Failed to delete file:', data.message);
+        // Show error message (you can add toast notification here)
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      // Show error message (you can add toast notification here)
     }
   };
 
