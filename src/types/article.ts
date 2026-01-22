@@ -84,8 +84,6 @@ export interface Article {
   // Relations
   category?: ArticleCategory;
   categoryId?: string;
-  author?: User;
-  authorId?: string;
   tags?: Tag[];
 }
 
