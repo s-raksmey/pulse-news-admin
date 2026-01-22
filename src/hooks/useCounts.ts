@@ -32,11 +32,17 @@ export function useCounts() {
         const articlesData = await getArticles({ take: 1000, skip: 0 });
         const articlesCount = articlesData?.articles?.length || 0;
 
-        // Fetch users count using GraphQL stats (more efficient and reliable)
+        // Fetch users count using GraphQL
         let usersCount = 0;
         try {
-          const userStats = await UserService.getUserStats();
-          usersCount = userStats?.totalUsers || 0;
+          const usersData = await UserService.listUsers({ 
+            search: '', 
+            role: undefined, 
+            status: undefined, 
+            take: 1000, 
+            skip: 0 
+          });
+          usersCount = usersData?.totalCount || 0;
         } catch (userError) {
           console.warn('Failed to fetch users count:', userError);
           // Keep default value of 0
