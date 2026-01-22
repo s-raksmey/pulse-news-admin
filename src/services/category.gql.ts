@@ -17,26 +17,6 @@ export const Q_CATEGORIES = gql`
   }
 `;
 
-// Fallback query that tries to include topics but may fail if schema doesn't support it
-export const Q_CATEGORIES_WITH_TOPICS_FALLBACK = gql`
-  query GetCategoriesWithTopicsFallback {
-    categories {
-      id
-      name
-      slug
-      createdAt
-      updatedAt
-      topics {
-        id
-        slug
-        title
-        createdAt
-        updatedAt
-      }
-    }
-  }
-`;
-
 export const Q_CATEGORIES_WITH_TOPICS = gql`
   query GetCategoriesWithTopics {
     categories {
@@ -229,7 +209,7 @@ export class CategoryService {
       );
       return response.categories;
     } catch (error: any) {
-      console.error('Error fetching categories with topics (full query):', error);
+      console.error('Error fetching categories with topics:', error);
       
       // Enhanced error detection - check multiple possible error structures
       const errorMessage = error?.response?.errors?.[0]?.message || error?.message || '';
@@ -247,30 +227,19 @@ export class CategoryService {
         ));
       
       if (isSchemaFieldError) {
-        console.warn('🔄 Backend schema missing description field. Trying fallback query with topics but no description...');
+        console.warn('🔄 Backend schema missing description/topics fields. Falling back to basic categories query.');
+        console.warn('💡 To enable full functionality, restart your backend server or check GraphQL schema compilation.');
         
-        // Try fallback query with topics but no description
+        // Fallback to basic categories query
         try {
           const fallbackResponse = await this.client.request<{ categories: Category[] }>(
-            Q_CATEGORIES_WITH_TOPICS_FALLBACK
+            Q_CATEGORIES
           );
-          console.info('✅ Successfully loaded categories with topics using fallback query (without description)');
+          console.info('✅ Successfully loaded categories using basic query (without descriptions/topics)');
           return fallbackResponse.categories;
-        } catch (fallbackError: any) {
-          console.warn('🔄 Fallback query with topics also failed. Trying basic categories query...');
-          
-          // Final fallback to basic categories query
-          try {
-            const basicResponse = await this.client.request<{ categories: Category[] }>(
-              Q_CATEGORIES
-            );
-            console.info('⚠️ Successfully loaded categories using basic query (without descriptions/topics)');
-            console.warn('💡 Topics will not be displayed. To enable full functionality, restart your backend server or check GraphQL schema compilation.');
-            return basicResponse.categories;
-          } catch (basicError) {
-            console.error('❌ All fallback queries failed:', basicError);
-            throw new Error('Failed to fetch categories. Please check your backend configuration and ensure the GraphQL server is running.');
-          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback query also failed:', fallbackError);
+          throw new Error('Failed to fetch categories. Please check your backend configuration and ensure the GraphQL server is running.');
         }
       }
       
