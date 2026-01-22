@@ -39,8 +39,8 @@ export function useCounts() {
             search: '', 
             role: undefined, 
             status: undefined, 
-            limit: 1000, 
-            offset: 0 
+            take: 1000, 
+            skip: 0 
           });
           usersCount = usersData?.totalCount || 0;
         } catch (userError) {
