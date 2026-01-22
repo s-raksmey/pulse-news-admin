@@ -35,7 +35,7 @@ export default function SearchPage() {
   const [hasMore, setHasMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [filters, setFilters] = useState({
-    status: '',
+    status: 'ALL',
     categorySlug: '',
     topic: '',
   });
@@ -54,7 +54,7 @@ export default function SearchPage() {
     const searchInput = {
       query: query.trim(),
       categorySlug: filters.categorySlug || undefined,
-      status: filters.status || undefined,
+      status: filters.status !== 'ALL' ? filters.status : undefined,
       authorName: filters.topic || undefined, // Map topic filter to authorName search
       take: 20,
       skip: page * 20,
@@ -94,13 +94,13 @@ export default function SearchPage() {
 
   const clearFilters = () => {
     setFilters({
-      status: '',
+      status: 'ALL',
       categorySlug: '',
       topic: '',
     });
   };
 
-  const hasActiveFilters = filters.status || filters.categorySlug || filters.topic;
+  const hasActiveFilters = (filters.status !== 'ALL' && filters.status) || filters.categorySlug || filters.topic;
 
   return (
     <div className="space-y-6">
@@ -158,7 +158,7 @@ export default function SearchPage() {
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="ALL">All statuses</SelectItem>
                   <SelectItem value="DRAFT">Draft</SelectItem>
                   <SelectItem value="REVIEW">Review</SelectItem>
                   <SelectItem value="PUBLISHED">Published</SelectItem>
