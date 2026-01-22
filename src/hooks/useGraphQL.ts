@@ -1,0 +1,314 @@
+// src/hooks/useGraphQL.ts
+import { useState, useCallback } from 'react';
+import { getAuthenticatedGqlClient } from '@/services/graphql-client';
+import { useAuth } from '@/contexts/AuthContext';
+
+export interface GraphQLError {
+  message: string;
+  locations?: Array<{
+    line: number;
+    column: number;
+  }>;
+  path?: string[];
+}
+
+export interface GraphQLResponse<T = any> {
+  data?: T;
+  errors?: GraphQLError[];
+}
+
+export function useGraphQL() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { token } = useAuth();
+
+  const execute = useCallback(async <T = any>(
+    query: string,
+    variables?: Record<string, any>
+  ): Promise<T | null> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const client = getAuthenticatedGqlClient(token);
+      const response = await client.request<T>(query, variables);
+      return response;
+    } catch (err: any) {
+      console.error('GraphQL Error:', err);
+      
+      // Handle GraphQL errors
+      if (err.response?.errors) {
+        const errorMessages = err.response.errors.map((e: GraphQLError) => e.message).join(', ');
+        setError(errorMessages);
+      } else {
+        setError(err.message || 'An unknown error occurred');
+      }
+      
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  const mutate = useCallback(async <T = any>(
+    mutation: string,
+    variables?: Record<string, any>
+  ): Promise<T | null> => {
+    return execute<T>(mutation, variables);
+  }, [execute]);
+
+  const query = useCallback(async <T = any>(
+    queryString: string,
+    variables?: Record<string, any>
+  ): Promise<T | null> => {
+    return execute<T>(queryString, variables);
+  }, [execute]);
+
+  return {
+    loading,
+    error,
+    execute,
+    mutate,
+    query,
+  };
+}
+
+// Specific hooks for common operations
+export function useArticles() {
+  const { query, loading, error } = useGraphQL();
+
+  const getArticles = useCallback(async (filters?: {
+    status?: string;
+    categorySlug?: string;
+    topic?: string;
+    take?: number;
+    skip?: number;
+  }) => {
+    const ARTICLES_QUERY = `
+      query GetArticles($status: ArticleStatus, $categorySlug: String, $topic: String, $take: Int, $skip: Int) {
+        articles(status: $status, categorySlug: $categorySlug, topic: $topic, take: $take, skip: $skip) {
+          id
+          title
+          slug
+          excerpt
+          status
+          topic
+          coverImageUrl
+          authorName
+          isFeatured
+          isEditorsPick
+          isBreaking
+          viewCount
+          publishedAt
+          createdAt
+          updatedAt
+          category {
+            id
+            name
+            slug
+          }
+          author {
+            id
+            name
+            email
+          }
+        }
+      }
+    `;
+
+    return await query(ARTICLES_QUERY, filters);
+  }, [query]);
+
+  const getArticleById = useCallback(async (id: string) => {
+    const ARTICLE_BY_ID_QUERY = `
+      query GetArticleById($id: ID!) {
+        articleById(id: $id) {
+          id
+          title
+          slug
+          excerpt
+          contentJson
+          status
+          topic
+          coverImageUrl
+          authorName
+          seoTitle
+          seoDescription
+          ogImageUrl
+          isFeatured
+          isEditorsPick
+          isBreaking
+          pinnedAt
+          viewCount
+          publishedAt
+          createdAt
+          updatedAt
+          category {
+            id
+            name
+            slug
+          }
+          author {
+            id
+            name
+            email
+          }
+        }
+      }
+    `;
+
+    return await query(ARTICLE_BY_ID_QUERY, { id });
+  }, [query]);
+
+  const getArticleBySlug = useCallback(async (slug: string) => {
+    const ARTICLE_BY_SLUG_QUERY = `
+      query GetArticleBySlug($slug: String!) {
+        articleBySlug(slug: $slug) {
+          id
+          title
+          slug
+          excerpt
+          contentJson
+          status
+          topic
+          coverImageUrl
+          authorName
+          seoTitle
+          seoDescription
+          ogImageUrl
+          isFeatured
+          isEditorsPick
+          isBreaking
+          pinnedAt
+          viewCount
+          publishedAt
+          createdAt
+          updatedAt
+          category {
+            id
+            name
+            slug
+          }
+          author {
+            id
+            name
+            email
+          }
+        }
+      }
+    `;
+
+    return await query(ARTICLE_BY_SLUG_QUERY, { slug });
+  }, [query]);
+
+  return {
+    getArticles,
+    getArticleById,
+    getArticleBySlug,
+    loading,
+    error,
+  };
+}
+
+export function useArticleMutations() {
+  const { mutate, loading, error } = useGraphQL();
+
+  const upsertArticle = useCallback(async (id?: string, input?: any) => {
+    const UPSERT_ARTICLE_MUTATION = `
+      mutation UpsertArticle($id: ID, $input: UpsertArticleInput!) {
+        upsertArticle(id: $id, input: $input) {
+          id
+          title
+          slug
+          excerpt
+          contentJson
+          status
+          topic
+          coverImageUrl
+          authorName
+          seoTitle
+          seoDescription
+          ogImageUrl
+          isFeatured
+          isEditorsPick
+          isBreaking
+          pinnedAt
+          viewCount
+          publishedAt
+          createdAt
+          updatedAt
+          category {
+            id
+            name
+            slug
+          }
+          author {
+            id
+            name
+            email
+          }
+        }
+      }
+    `;
+
+    return await mutate(UPSERT_ARTICLE_MUTATION, { id, input });
+  }, [mutate]);
+
+  const setArticleStatus = useCallback(async (id: string, status: string) => {
+    const SET_ARTICLE_STATUS_MUTATION = `
+      mutation SetArticleStatus($id: ID!, $status: ArticleStatus!) {
+        setArticleStatus(id: $id, status: $status) {
+          id
+          status
+          publishedAt
+        }
+      }
+    `;
+
+    return await mutate(SET_ARTICLE_STATUS_MUTATION, { id, status });
+  }, [mutate]);
+
+  const deleteArticle = useCallback(async (id: string) => {
+    const DELETE_ARTICLE_MUTATION = `
+      mutation DeleteArticle($id: ID!) {
+        deleteArticle(id: $id)
+      }
+    `;
+
+    return await mutate(DELETE_ARTICLE_MUTATION, { id });
+  }, [mutate]);
+
+  return {
+    upsertArticle,
+    setArticleStatus,
+    deleteArticle,
+    loading,
+    error,
+  };
+}
+
+export function useCategories() {
+  const { query, loading, error } = useGraphQL();
+
+  const getCategories = useCallback(async () => {
+    const CATEGORIES_QUERY = `
+      query GetCategories {
+        categories {
+          id
+          name
+          slug
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    return await query(CATEGORIES_QUERY);
+  }, [query]);
+
+  return {
+    getCategories,
+    loading,
+    error,
+  };
+}
