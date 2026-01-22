@@ -31,7 +31,6 @@ const LIST_USERS_QUERY = gql`
         role
         isActive
         createdAt
-        updatedAt
       }
       totalCount
       hasMore
@@ -53,7 +52,6 @@ const GET_USER_BY_ID_QUERY = gql`
       role
       isActive
       createdAt
-      updatedAt
     }
   }
 `;
@@ -108,7 +106,6 @@ const UPDATE_USER_PROFILE_MUTATION = gql`
         role
         isActive
         createdAt
-        updatedAt
       }
     }
   }
@@ -126,7 +123,6 @@ const UPDATE_USER_ROLE_MUTATION = gql`
         role
         isActive
         createdAt
-        updatedAt
       }
     }
   }
@@ -144,7 +140,6 @@ const UPDATE_USER_STATUS_MUTATION = gql`
         role
         isActive
         createdAt
-        updatedAt
       }
     }
   }
@@ -162,7 +157,6 @@ const DELETE_USER_MUTATION = gql`
         role
         isActive
         createdAt
-        updatedAt
       }
     }
   }
@@ -423,4 +417,3 @@ export class UserService {
       : 'bg-red-100 text-red-800';
   }
 }
-

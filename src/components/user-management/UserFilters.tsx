@@ -104,7 +104,6 @@ export default function UserFilters({ filters, onFiltersChange, onClearFilters }
           <option value="role-desc">Role (Z-A)</option>
           <option value="createdAt-desc">Newest First</option>
           <option value="createdAt-asc">Oldest First</option>
-          <option value="updatedAt-desc">Recently Updated</option>
         </select>
       </div>
 
@@ -149,4 +148,3 @@ export default function UserFilters({ filters, onFiltersChange, onClearFilters }
     </div>
   );
 }
-
