@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { MoreHorizontal, Edit, Trash2, Shield, UserCheck, UserX } from 'lucide-react';
 import { format } from 'date-fns';
 import { UserService } from '../../services/user.gql';
+import { ConfirmationDialog } from '../ui/confirmation-dialog';
 import type { User } from '../../types/user';
 
 interface UserTableRowProps {
@@ -24,13 +25,26 @@ export default function UserTableRow({
 }: UserTableRowProps) {
   const [showActions, setShowActions] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Confirmation dialog states
+  const [confirmRoleChangeOpen, setConfirmRoleChangeOpen] = useState(false);
+  const [confirmStatusToggleOpen, setConfirmStatusToggleOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [pendingRole, setPendingRole] = useState<string>('');
+  const [pendingOperation, setPendingOperation] = useState<string>('');
 
-  const handleRoleChange = async (newRole: string) => {
+  const handleRoleChangeRequest = (newRole: string) => {
+    setPendingRole(newRole);
+    setConfirmRoleChangeOpen(true);
+    setShowActions(false);
+  };
+
+  const handleConfirmRoleChange = async () => {
     try {
       setIsUpdating(true);
       const result = await UserService.updateUserRole({
         userId: user.id,
-        role: newRole as any,
+        role: pendingRole as any,
       });
       
       if (result.success && result.user) {
@@ -40,11 +54,18 @@ export default function UserTableRow({
       console.error('Failed to update user role:', error);
     } finally {
       setIsUpdating(false);
-      setShowActions(false);
+      setConfirmRoleChangeOpen(false);
+      setPendingRole('');
     }
   };
 
-  const handleStatusToggle = async () => {
+  const handleStatusToggleRequest = () => {
+    setPendingOperation(user.isActive ? 'deactivate' : 'activate');
+    setConfirmStatusToggleOpen(true);
+    setShowActions(false);
+  };
+
+  const handleConfirmStatusToggle = async () => {
     try {
       setIsUpdating(true);
       const result = await UserService.updateUserStatus({
@@ -59,15 +80,17 @@ export default function UserTableRow({
       console.error('Failed to update user status:', error);
     } finally {
       setIsUpdating(false);
-      setShowActions(false);
+      setConfirmStatusToggleOpen(false);
+      setPendingOperation('');
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDeleteRequest = () => {
+    setConfirmDeleteOpen(true);
+    setShowActions(false);
+  };
 
+  const handleConfirmDelete = async () => {
     try {
       setIsUpdating(true);
       const result = await UserService.deleteUser(user.id);
@@ -79,7 +102,7 @@ export default function UserTableRow({
       console.error('Failed to delete user:', error);
     } finally {
       setIsUpdating(false);
-      setShowActions(false);
+      setConfirmDeleteOpen(false);
     }
   };
 
@@ -153,7 +176,7 @@ export default function UserTableRow({
                 {['ADMIN', 'EDITOR', 'AUTHOR'].map((role) => (
                   <button
                     key={role}
-                    onClick={() => handleRoleChange(role)}
+                    onClick={() => handleRoleChangeRequest(role)}
                     disabled={user.role === role}
                     className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center space-x-2 ${
                       user.role === role ? 'text-slate-400 cursor-not-allowed' : 'text-slate-700'
@@ -168,7 +191,7 @@ export default function UserTableRow({
 
                 {/* Status Toggle */}
                 <button
-                  onClick={handleStatusToggle}
+                  onClick={handleStatusToggleRequest}
                   className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center space-x-2"
                 >
                   {user.isActive ? (
@@ -188,7 +211,7 @@ export default function UserTableRow({
 
                 {/* Delete */}
                 <button
-                  onClick={handleDelete}
+                  onClick={handleDeleteRequest}
                   className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -200,6 +223,53 @@ export default function UserTableRow({
         </div>
       </td>
     </tr>
+    
+    {/* Confirmation Dialogs */}
+    <>
+      {/* Role Change Confirmation */}
+      <ConfirmationDialog
+        open={confirmRoleChangeOpen}
+        onOpenChange={setConfirmRoleChangeOpen}
+        title="Change User Role"
+        description={`Are you sure you want to change ${user.name}'s role from ${UserService.getRoleDisplayName(user.role)} to ${UserService.getRoleDisplayName(pendingRole)}?`}
+        confirmText="Change Role"
+        cancelText="Cancel"
+        variant="default"
+        onConfirm={handleConfirmRoleChange}
+        onCancel={() => {
+          setConfirmRoleChangeOpen(false);
+          setPendingRole('');
+        }}
+      />
+
+      {/* Status Toggle Confirmation */}
+      <ConfirmationDialog
+        open={confirmStatusToggleOpen}
+        onOpenChange={setConfirmStatusToggleOpen}
+        title={`${pendingOperation === 'activate' ? 'Activate' : 'Deactivate'} User`}
+        description={`Are you sure you want to ${pendingOperation} ${user.name}? ${pendingOperation === 'deactivate' ? 'They will no longer be able to access the system.' : 'They will regain access to the system.'}`}
+        confirmText={pendingOperation === 'activate' ? 'Activate' : 'Deactivate'}
+        cancelText="Cancel"
+        variant={pendingOperation === 'deactivate' ? 'destructive' : 'default'}
+        onConfirm={handleConfirmStatusToggle}
+        onCancel={() => {
+          setConfirmStatusToggleOpen(false);
+          setPendingOperation('');
+        }}
+      />
+
+      {/* Delete Confirmation */}
+      <ConfirmationDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Delete User"
+        description={`Are you sure you want to delete ${user.name}? This action cannot be undone and will permanently remove all their data.`}
+        confirmText="Delete User"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
+    </>
   );
 }
-
