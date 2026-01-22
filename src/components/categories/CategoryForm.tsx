@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Category, Topic, UpsertTopicInput } from "@/services/category.gql";
+import { Category, Topic, CreateTopicInput } from "@/services/category.gql";
 
 interface CategoryFormProps {
   category?: Category | null;
@@ -16,7 +16,7 @@ export interface CategoryFormData {
   name: string;
   slug: string;
   description?: string;
-  topics?: Omit<UpsertTopicInput, 'categoryId'>[];
+  topics?: CreateTopicInput[];
 }
 
 interface TopicFormData {
@@ -107,7 +107,7 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
     if (!validateForm()) return;
 
     // Prepare topics data for submission
-    const topicsData: Omit<UpsertTopicInput, 'categoryId'>[] = topics
+    const topicsData: CreateTopicInput[] = topics
       .filter(topic => topic.title.trim() && topic.slug.trim())
       .map(topic => ({
         title: topic.title.trim(),

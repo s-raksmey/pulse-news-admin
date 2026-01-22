@@ -11,7 +11,6 @@ import {
   M_DELETE_ARTICLE,
 } from "@/services/article.gql";
 import { CategoryService, Category } from "@/services/category.gql";
-import { getCategoriesWithFallback } from "@/utils/seed-categories";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -86,15 +85,11 @@ export default function EditArticlePage() {
     try {
       setCategoriesLoading(true);
       setCategoriesError(null);
-      
-      // Use the robust fallback mechanism
-      const categoriesData = await getCategoriesWithFallback();
+      const categoriesData = await CategoryService.getCategoriesWithTopics();
       setCategories(categoriesData);
-      
-      console.log(`📋 Loaded ${categoriesData.length} categories for article editing`);
     } catch (err) {
       console.error('Error loading categories:', err);
-      setCategoriesError('Failed to load categories. Please try again.');
+      setCategoriesError('Failed to load categories');
     } finally {
       setCategoriesLoading(false);
     }
@@ -110,7 +105,7 @@ export default function EditArticlePage() {
       try {
         // Load categories and article in parallel
         const [categoriesData, articleData] = await Promise.all([
-          getCategoriesWithFallback(),
+          CategoryService.getCategoriesWithTopics(),
           client.request(Q_ARTICLE_BY_ID, { id })
         ]);
 

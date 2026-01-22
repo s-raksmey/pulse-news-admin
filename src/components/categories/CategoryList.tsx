@@ -10,9 +10,7 @@ interface CategoryListProps {
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
   onCreate: () => void;
-  onSeedCategories?: () => void;
   isLoading?: boolean;
-  isSeedingCategories?: boolean;
 }
 
 export function CategoryList({ 
@@ -20,9 +18,7 @@ export function CategoryList({
   onEdit, 
   onDelete, 
   onCreate, 
-  onSeedCategories,
-  isLoading = false,
-  isSeedingCategories = false
+  isLoading = false 
 }: CategoryListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -63,21 +59,10 @@ export function CategoryList({
             Manage content categories for your articles
           </p>
         </div>
-        <div className="flex gap-2">
-          {onSeedCategories && (
-            <Button 
-              variant="outline" 
-              onClick={onSeedCategories} 
-              disabled={isLoading || isSeedingCategories}
-            >
-              {isSeedingCategories ? "Seeding..." : "Seed from MEGA_NAV"}
-            </Button>
-          )}
-          <Button onClick={onCreate} disabled={isLoading}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Category
-          </Button>
-        </div>
+        <Button onClick={onCreate} disabled={isLoading}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Category
+        </Button>
       </div>
 
       {/* Categories List */}
@@ -90,23 +75,12 @@ export function CategoryList({
             No categories yet
           </h3>
           <p className="text-slate-600 mb-4">
-            Create your first category to organize your articles, or seed categories from MEGA_NAV.
+            Create your first category to organize your articles.
           </p>
-          <div className="flex gap-2 justify-center">
-            {onSeedCategories && (
-              <Button 
-                variant="outline" 
-                onClick={onSeedCategories} 
-                disabled={isLoading || isSeedingCategories}
-              >
-                {isSeedingCategories ? "Seeding..." : "Seed from MEGA_NAV"}
-              </Button>
-            )}
-            <Button onClick={onCreate} disabled={isLoading}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Category
-            </Button>
-          </div>
+          <Button onClick={onCreate} disabled={isLoading}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Category
+          </Button>
         </div>
       ) : (
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
