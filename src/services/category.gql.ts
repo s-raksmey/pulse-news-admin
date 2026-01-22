@@ -39,8 +39,8 @@ export const Q_CATEGORIES_WITH_TOPICS = gql`
 `;
 
 export const Q_TOPICS_BY_CATEGORY = gql`
-  query GetTopicsByCategory($categoryId: ID!) {
-    topicsByCategory(categoryId: $categoryId) {
+  query GetTopicsByCategory($categorySlug: String!) {
+    topicsByCategory(categorySlug: $categorySlug) {
       id
       slug
       title
@@ -359,11 +359,11 @@ export class CategoryService {
   }
 
   // Topic Methods
-  static async getTopicsByCategory(categoryId: string): Promise<Topic[]> {
+  static async getTopicsByCategory(categorySlug: string): Promise<Topic[]> {
     try {
       const response = await this.client.request<{ topicsByCategory: Topic[] }>(
         Q_TOPICS_BY_CATEGORY,
-        { categoryId }
+        { categorySlug }
       );
       return response.topicsByCategory;
     } catch (error: any) {

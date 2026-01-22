@@ -126,9 +126,20 @@ export default function NewArticlePage() {
       });
 
       window.location.href = "/articles";
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving article:', error);
-      alert('Failed to save article. Please try again.');
+      
+      // Extract specific error message from GraphQL response
+      let errorMessage = 'Failed to save article. Please try again.';
+      
+      if (error?.response?.errors?.[0]?.message) {
+        errorMessage = error.response.errors[0].message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      // Show user-friendly error message
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
