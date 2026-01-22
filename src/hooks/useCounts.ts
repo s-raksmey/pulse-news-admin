@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useArticles, useCategories } from './useGraphQL';
-import { listUsers } from '@/services/user.gql';
+import { UserService } from '@/services/user.gql';
 
 interface Counts {
   articles: number;
@@ -35,7 +35,7 @@ export function useCounts() {
         // Fetch users count using GraphQL
         let usersCount = 0;
         try {
-          const usersData = await listUsers({ 
+          const usersData = await UserService.listUsers({ 
             search: '', 
             role: undefined, 
             status: undefined, 
