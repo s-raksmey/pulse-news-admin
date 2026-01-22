@@ -59,11 +59,26 @@ export default function NewArticlePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  
+  // Topic management
+  const [topics, setTopics] = useState<any[]>([]);
+  const [topicsLoading, setTopicsLoading] = useState(false);
+  const [topicsError, setTopicsError] = useState<string | null>(null);
 
   // Load categories on component mount
   useEffect(() => {
     loadCategories();
   }, []);
+
+  // Load topics when category changes
+  useEffect(() => {
+    if (categorySlug) {
+      loadTopicsForCategory(categorySlug);
+    } else {
+      setTopics([]);
+      setTopic("");
+    }
+  }, [categorySlug]);
 
   const loadCategories = async () => {
     try {
@@ -88,9 +103,26 @@ export default function NewArticlePage() {
     }
   };
 
+  const loadTopicsForCategory = async (categorySlug: string) => {
+    try {
+      setTopicsLoading(true);
+      setTopicsError(null);
+      
+      const topicsData = await CategoryService.getTopicsByCategory(categorySlug);
+      setTopics(topicsData);
+      
+      console.log(`📋 Loaded ${topicsData.length} topics for category: ${categorySlug}`);
+    } catch (err) {
+      console.error('Error loading topics:', err);
+      setTopicsError('Failed to load topics for this category.');
+      setTopics([]);
+    } finally {
+      setTopicsLoading(false);
+    }
+  };
+
   // Get topics for selected category
-  const selectedCategory = categories.find(cat => cat.slug === categorySlug);
-  const topicOptions = selectedCategory?.topics || [];
+  const topicOptions = topics;
 
   /* -------------------------
      Save
@@ -288,14 +320,24 @@ export default function NewArticlePage() {
               className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm disabled:bg-slate-50 disabled:text-slate-500"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              disabled={!categorySlug || topicOptions.length === 0}
+              disabled={!categorySlug || topicsLoading}
             >
-              <option value="">— No topic —</option>
-              {topicOptions.map((topicItem) => (
-                <option key={topicItem.slug} value={topicItem.slug}>
-                  {topicItem.title}
-                </option>
-              ))}
+              {!categorySlug ? (
+                <option value="">— Select a category first —</option>
+              ) : topicsLoading ? (
+                <option value="">Loading topics...</option>
+              ) : topicOptions.length === 0 ? (
+                <option value="">— No topics available —</option>
+              ) : (
+                <>
+                  <option value="">— No topic —</option>
+                  {topicOptions.map((topicItem) => (
+                    <option key={topicItem.slug} value={topicItem.slug}>
+                      {topicItem.title}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
           </div>
         </div>
