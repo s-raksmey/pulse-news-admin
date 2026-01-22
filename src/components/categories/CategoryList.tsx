@@ -98,9 +98,6 @@ export function CategoryList({
                     Description
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Topics
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Created
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -125,29 +122,6 @@ export function CategoryList({
                       <div className="text-sm text-slate-600 max-w-xs truncate">
                         {category.description || (
                           <span className="italic text-slate-400">No description</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-slate-600">
-                        {category.topics && category.topics.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {category.topics.slice(0, 3).map((topic) => (
-                              <span
-                                key={topic.id}
-                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                              >
-                                {topic.title}
-                              </span>
-                            ))}
-                            {category.topics.length > 3 && (
-                              <span className="text-xs text-slate-500">
-                                +{category.topics.length - 3} more
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="italic text-slate-400">No topics</span>
                         )}
                       </div>
                     </td>
