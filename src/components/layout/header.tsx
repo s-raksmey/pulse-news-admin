@@ -92,22 +92,34 @@ export function Header({ onMobileNavOpen }: HeaderProps) {
 
         {/* Search */}
         <div className="flex-1 max-w-md">
-          <div className="relative">
-            <Search className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors duration-200 ${
-              searchFocused ? 'text-blue-500' : 'text-slate-500'
-            }`} />
-            <input
-              type="search"
-              placeholder="Search articles, users, categories..."
-              className={`w-full rounded-lg border bg-white pl-10 pr-4 py-2.5 text-sm placeholder:text-slate-500 transition-all duration-200 ${
-                searchFocused 
-                  ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-sm' 
-                  : 'border-slate-200 hover:border-slate-300'
-              }`}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-            />
-          </div>
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const query = formData.get('search') as string;
+              if (query.trim()) {
+                window.location.href = `/search?q=${encodeURIComponent(query.trim())}`;
+              }
+            }}
+          >
+            <div className="relative">
+              <Search className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors duration-200 ${
+                searchFocused ? 'text-blue-500' : 'text-slate-500'
+              }`} />
+              <input
+                name="search"
+                type="search"
+                placeholder="Search articles, users, categories..."
+                className={`w-full rounded-lg border bg-white pl-10 pr-4 py-2.5 text-sm placeholder:text-slate-500 transition-all duration-200 ${
+                  searchFocused 
+                    ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-sm' 
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+              />
+            </div>
+          </form>
         </div>
 
         {/* Right side actions */}

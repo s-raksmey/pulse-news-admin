@@ -292,3 +292,72 @@ export function useCategories() {
     error,
   };
 }
+
+export function useSearch() {
+  const { query, loading, error } = useGraphQL();
+
+  const searchArticles = useCallback(async (searchInput: {
+    query?: string;
+    filters?: {
+      status?: string;
+      categorySlug?: string;
+      topic?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    };
+    pagination?: {
+      take?: number;
+      skip?: number;
+    };
+  }) => {
+    const SEARCH_ARTICLES_QUERY = `
+      query SearchArticles($input: SearchInput!) {
+        searchArticles(input: $input) {
+          articles {
+            id
+            title
+            slug
+            excerpt
+            status
+            topic
+            coverImageUrl
+            authorName
+            isFeatured
+            isEditorsPick
+            isBreaking
+            viewCount
+            publishedAt
+            createdAt
+            updatedAt
+            category {
+              id
+              name
+              slug
+            }
+          }
+          totalCount
+          hasMore
+        }
+      }
+    `;
+
+    return await query(SEARCH_ARTICLES_QUERY, { input: searchInput });
+  }, [query]);
+
+  const getSearchSuggestions = useCallback(async (searchQuery: string, limit = 5) => {
+    const SEARCH_SUGGESTIONS_QUERY = `
+      query SearchSuggestions($query: String!, $limit: Int) {
+        searchSuggestions(query: $query, limit: $limit)
+      }
+    `;
+
+    return await query(SEARCH_SUGGESTIONS_QUERY, { query: searchQuery, limit });
+  }, [query]);
+
+  return {
+    searchArticles,
+    getSearchSuggestions,
+    loading,
+    error,
+  };
+}
