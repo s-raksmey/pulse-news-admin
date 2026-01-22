@@ -1,66 +1,221 @@
+'use client';
+
 import Link from "next/link";
-import { getGqlClient } from "@/services/graphql-client";
-import { Q_ARTICLES } from "@/services/article.gql";
+import { useState, useEffect } from "react";
+import { useArticles, useArticleMutations } from "@/hooks/useGraphQL";
 import { Button } from "@/components/ui/button";
+import { Article, ArticleStatus } from "@/types/article";
+import { Badge } from "@/components/ui/badge";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Eye, Edit, Trash2, Plus } from "lucide-react";
+import { format } from "date-fns";
 
-export default async function AdminArticlesPage() {
-  const client = getGqlClient();
-  const data = await client.request(Q_ARTICLES, { take: 50, skip: 0 });
+const statusColors = {
+  DRAFT: "bg-gray-100 text-gray-800",
+  REVIEW: "bg-yellow-100 text-yellow-800", 
+  PUBLISHED: "bg-green-100 text-green-800",
+  ARCHIVED: "bg-red-100 text-red-800"
+};
 
-  const articleUrl = (article: any) => {
+export default function AdminArticlesPage() {
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [statusFilter, setStatusFilter] = useState<ArticleStatus | undefined>();
+  const { getArticles, loading, error } = useArticles();
+  const { setArticleStatus, deleteArticle, loading: mutationLoading } = useArticleMutations();
+
+  useEffect(() => {
+    loadArticles();
+  }, [statusFilter]);
+
+  const loadArticles = async () => {
+    const response = await getArticles({ 
+      status: statusFilter,
+      take: 50, 
+      skip: 0 
+    });
+    
+    if (response?.articles) {
+      setArticles(response.articles);
+    }
+  };
+
+  const handleStatusChange = async (articleId: string, newStatus: ArticleStatus) => {
+    const response = await setArticleStatus(articleId, newStatus);
+    if (response) {
+      // Refresh the list
+      loadArticles();
+    }
+  };
+
+  const handleDelete = async (articleId: string) => {
+    if (confirm('Are you sure you want to delete this article?')) {
+      const response = await deleteArticle(articleId);
+      if (response) {
+        // Refresh the list
+        loadArticles();
+      }
+    }
+  };
+
+  const articleUrl = (article: Article) => {
     const category = article.category?.slug ?? "news";
     const topic = article.topic ?? "latest";
     return `/${category}/${topic}/${article.slug}`;
   };
+
+  if (loading && articles.length === 0) {
+    return (
+      <main className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Articles</h2>
+            <p className="text-sm text-slate-600">Loading articles...</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Articles</h2>
+            <p className="text-sm text-red-600">Error: {error}</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Articles</h2>
-          <p className="text-sm text-slate-600">Create, edit, publish.</p>
+          <p className="text-sm text-slate-600">Create, edit, and publish articles.</p>
         </div>
         <Link href="/articles/new">
-          <Button>New Article</Button>
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            New Article
+          </Button>
         </Link>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-2">
+        <Button
+          variant={statusFilter === undefined ? "default" : "outline"}
+          size="sm"
+          onClick={() => setStatusFilter(undefined)}
+        >
+          All
+        </Button>
+        {(['DRAFT', 'REVIEW', 'PUBLISHED', 'ARCHIVED'] as ArticleStatus[]).map((status) => (
+          <Button
+            key={status}
+            variant={statusFilter === status ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter(status)}
+          >
+            {status}
+          </Button>
+        ))}
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div className="grid grid-cols-12 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600">
-          <div className="col-span-6">Title</div>
+          <div className="col-span-5">Title</div>
           <div className="col-span-2">Status</div>
           <div className="col-span-2">Category</div>
-            <div className="col-span-2 text-right">Actions</div>
-          </div>
+          <div className="col-span-2">Updated</div>
+          <div className="col-span-1 text-right">Actions</div>
+        </div>
 
-        {data.articles.map((a: any) => (
-          <div key={a.id} className="grid grid-cols-12 items-center px-4 py-3 text-sm border-b last:border-b-0">
-            <div className="col-span-6">
-              <div className="font-medium">{a.title}</div>
-              <div className="text-xs text-slate-500">/{a.slug}</div>
-            </div>
-            <div className="col-span-2">
-              <span className="rounded-full border border-slate-200 px-2 py-1 text-xs">{a.status}</span>
-            </div>
-            <div className="col-span-2 text-slate-600 text-xs">{a.category?.name ?? "—"}</div>
-            <div className="col-span-2 text-right">
-              <div className="flex justify-end gap-3 text-sm">
-                <Link
-                  className="text-slate-700 hover:text-slate-900 underline"
-                  href={articleUrl(a)}
-                >
-                  View
-                </Link>
-                <Link
-                  className="text-slate-700 hover:text-slate-900 underline"
-                  href={`/articles/${a.id}/edit`}
-                >
-                  Edit
-                </Link>
+        {articles.length === 0 ? (
+          <div className="px-4 py-8 text-center text-slate-500">
+            No articles found. <Link href="/articles/new" className="text-blue-600 hover:underline">Create your first article</Link>
+          </div>
+        ) : (
+          articles.map((article) => (
+            <div key={article.id} className="grid grid-cols-12 items-center px-4 py-3 text-sm border-b last:border-b-0 hover:bg-slate-50">
+              <div className="col-span-5">
+                <div className="font-medium">{article.title}</div>
+                <div className="text-xs text-slate-500 flex items-center gap-2">
+                  /{article.slug}
+                  {article.isFeatured && <Badge variant="secondary" className="text-xs">Featured</Badge>}
+                  {article.isEditorsPick && <Badge variant="secondary" className="text-xs">Editor's Pick</Badge>}
+                  {article.isBreaking && <Badge variant="destructive" className="text-xs">Breaking</Badge>}
+                </div>
+              </div>
+              <div className="col-span-2">
+                <Badge className={`text-xs ${statusColors[article.status]}`}>
+                  {article.status}
+                </Badge>
+              </div>
+              <div className="col-span-2 text-slate-600 text-xs">
+                {article.category?.name ?? "—"}
+              </div>
+              <div className="col-span-2 text-slate-600 text-xs">
+                {format(new Date(article.updatedAt), 'MMM d, yyyy')}
+              </div>
+              <div className="col-span-1 text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href={articleUrl(article)} target="_blank">
+                        <Eye className="w-4 h-4 mr-2" />
+                        View
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/articles/${article.id}/edit`}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </Link>
+                    </DropdownMenuItem>
+                    {article.status !== 'PUBLISHED' && (
+                      <DropdownMenuItem 
+                        onClick={() => handleStatusChange(article.id, 'PUBLISHED')}
+                        disabled={mutationLoading}
+                      >
+                        Publish
+                      </DropdownMenuItem>
+                    )}
+                    {article.status === 'PUBLISHED' && (
+                      <DropdownMenuItem 
+                        onClick={() => handleStatusChange(article.id, 'DRAFT')}
+                        disabled={mutationLoading}
+                      >
+                        Unpublish
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem 
+                      onClick={() => handleDelete(article.id)}
+                      disabled={mutationLoading}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </main>
   );
