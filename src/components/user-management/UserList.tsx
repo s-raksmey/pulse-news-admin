@@ -1,7 +1,7 @@
 // src/components/user-management/UserList.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { UserService } from '../../services/user.gql';
 import UserTableRow from './UserTableRow';
@@ -22,6 +22,8 @@ export default function UserList({ filters }: UserListProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   
   const pageSize = 10;
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastFiltersRef = useRef<string>('');
 
   const fetchUsers = async (page: number = 1) => {
     try {
@@ -38,7 +40,9 @@ export default function UserList({ filters }: UserListProps) {
         sortOrder: filters.sortOrder,
       };
 
+      console.log('🔍 UserList: Making API call to listUsers with input:', input);
       const result = await UserService.listUsers(input);
+      console.log('✅ UserList: API call completed, received', result.users.length, 'users');
       
       setUsers(result.users);
       setTotalCount(result.totalCount);
@@ -52,10 +56,50 @@ export default function UserList({ filters }: UserListProps) {
     }
   };
 
-  // Fetch users when filters change
+  // Fetch users when filters change with debouncing for search
   useEffect(() => {
-    fetchUsers(1);
-  }, [filters]);
+    // Create a string representation of current filters to compare
+    const currentFiltersString = JSON.stringify({
+      search: filters.search,
+      role: filters.role,
+      status: filters.status,
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder
+    });
+    
+    console.log('🔄 UserList useEffect triggered with filters:', filters);
+    
+    // Prevent duplicate API calls if filters haven't actually changed
+    if (currentFiltersString === lastFiltersRef.current) {
+      console.log('⏭️ UserList: Skipping API call - filters unchanged');
+      return;
+    }
+    
+    // Clear any existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    
+    // Debounce search input, but apply other filters immediately
+    const previousFilters = lastFiltersRef.current ? JSON.parse(lastFiltersRef.current) : {};
+    const hasSearchChanged = filters.search !== previousFilters.search;
+    const debounceDelay = hasSearchChanged && filters.search ? 300 : 0;
+    
+    console.log(`⏰ UserList: Setting timeout for ${debounceDelay}ms (search changed: ${hasSearchChanged})`);
+    
+    debounceTimeoutRef.current = setTimeout(() => {
+      console.log('🚀 UserList: Executing debounced API call');
+      lastFiltersRef.current = currentFiltersString;
+      fetchUsers(1);
+    }, debounceDelay);
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [filters.search, filters.role, filters.status, filters.sortBy, filters.sortOrder]);
 
   const handlePageChange = (page: number) => {
     fetchUsers(page);
@@ -289,4 +333,3 @@ export default function UserList({ filters }: UserListProps) {
     </div>
   );
 }
-
