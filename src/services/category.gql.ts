@@ -69,19 +69,6 @@ export const M_CREATE_CATEGORY = gql`
   }
 `;
 
-// Fallback mutation without description field for schema compatibility
-export const M_CREATE_CATEGORY_BASIC = gql`
-  mutation CreateCategoryBasic($input: CreateCategoryInput!) {
-    createCategory(input: $input) {
-      id
-      name
-      slug
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
 export const M_UPDATE_CATEGORY = gql`
   mutation UpdateCategory($id: ID!, $input: UpdateCategoryInput!) {
     updateCategory(id: $id, input: $input) {
@@ -89,19 +76,6 @@ export const M_UPDATE_CATEGORY = gql`
       name
       slug
       description
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-// Fallback mutation without description field for schema compatibility
-export const M_UPDATE_CATEGORY_BASIC = gql`
-  mutation UpdateCategoryBasic($id: ID!, $input: UpdateCategoryInput!) {
-    updateCategory(id: $id, input: $input) {
-      id
-      name
-      slug
       createdAt
       updatedAt
     }
@@ -211,47 +185,33 @@ export class CategoryService {
     } catch (error: any) {
       console.error('Error fetching categories with topics:', error);
       
-      // Enhanced error detection - check multiple possible error structures
-      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || '';
-      const errorString = JSON.stringify(error);
-      
-      // Check if the error is due to missing schema fields (multiple ways to detect)
-      const isSchemaFieldError = 
-        errorMessage.includes('Cannot query field "description"') || 
-        errorMessage.includes('Cannot query field "topics"') ||
-        errorString.includes('Cannot query field "description"') ||
-        errorString.includes('Cannot query field "topics"') ||
-        (error?.response?.errors && error.response.errors.some((err: any) => 
-          err.message?.includes('Cannot query field "description"') || 
-          err.message?.includes('Cannot query field "topics"')
-        ));
-      
-      if (isSchemaFieldError) {
-        console.warn('🔄 Backend schema missing description/topics fields. Falling back to basic categories query.');
-        console.warn('💡 To enable full functionality, restart your backend server or check GraphQL schema compilation.');
+      // Check if the error is due to missing schema fields
+      const errorMessage = error?.response?.errors?.[0]?.message || '';
+      if (errorMessage.includes('Cannot query field "description"') || 
+          errorMessage.includes('Cannot query field "topics"')) {
+        
+        console.warn('Backend schema missing description/topics fields. Falling back to basic categories query.');
+        console.warn('Please run database migrations: npx prisma migrate deploy');
         
         // Fallback to basic categories query
         try {
           const fallbackResponse = await this.client.request<{ categories: Category[] }>(
             Q_CATEGORIES
           );
-          console.info('✅ Successfully loaded categories using basic query (without descriptions/topics)');
           return fallbackResponse.categories;
         } catch (fallbackError) {
-          console.error('❌ Fallback query also failed:', fallbackError);
-          throw new Error('Failed to fetch categories. Please check your backend configuration and ensure the GraphQL server is running.');
+          console.error('Fallback query also failed:', fallbackError);
+          throw new Error('Failed to fetch categories. Please check your backend configuration.');
         }
       }
       
-      // Re-throw other errors with more context
-      console.error('❌ Non-schema related error occurred:', errorMessage);
-      throw new Error(`Failed to fetch categories: ${errorMessage}`);
+      // Re-throw other errors
+      throw new Error('Failed to fetch categories with topics');
     }
   }
 
   static async createCategory(input: CreateCategoryInput): Promise<Category> {
     try {
-      // Try the full mutation with description field first
       const response = await this.client.request<{ createCategory: Category }>(
         M_CREATE_CATEGORY,
         { input }
@@ -262,37 +222,14 @@ export class CategoryService {
       
       // Extract GraphQL error message if available
       const errorMessage = error?.response?.errors?.[0]?.message || error?.message || 'Failed to create category';
-      const errorString = JSON.stringify(error);
       
-      // Check if the error is due to missing description field in response
-      const isSchemaFieldError = 
-        errorMessage.includes('Cannot query field "description"') ||
-        errorString.includes('Cannot query field "description"') ||
-        (error?.response?.errors && error.response.errors.some((err: any) => 
-          err.message?.includes('Cannot query field "description"')
-        ));
-      
-      if (isSchemaFieldError) {
-        console.warn('🔄 Backend schema missing description field in response. Trying basic mutation...');
-        
-        // Fallback to basic mutation without description field
-        try {
-          const fallbackResponse = await this.client.request<{ createCategory: Category }>(
-            M_CREATE_CATEGORY_BASIC,
-            { input }
-          );
-          console.info('✅ Successfully created category using basic mutation (without description in response)');
-          return fallbackResponse.createCategory;
-        } catch (fallbackError: any) {
-          console.error('❌ Fallback mutation also failed:', fallbackError);
-          const fallbackErrorMessage = fallbackError?.response?.errors?.[0]?.message || fallbackError?.message || 'Failed to create category';
-          throw new Error(`Failed to create category: ${fallbackErrorMessage}`);
-        }
+      // Provide helpful guidance for common issues
+      if (errorMessage.includes('Cannot query field "description"')) {
+        throw new Error('Backend schema is missing the description field. Please run database migrations: npx prisma migrate deploy');
       }
       
-      // Provide helpful guidance for other common issues
       if (errorMessage.includes('Field "description" is not defined')) {
-        throw new Error('Backend GraphQL schema needs to be updated to support the description field. Please restart your backend server.');
+        throw new Error('Backend GraphQL schema needs to be updated to support the description field. Please check your backend configuration.');
       }
       
       throw new Error(errorMessage);
@@ -301,7 +238,6 @@ export class CategoryService {
 
   static async updateCategory(id: string, input: UpdateCategoryInput): Promise<Category> {
     try {
-      // Try the full mutation with description field first
       const response = await this.client.request<{ updateCategory: Category }>(
         M_UPDATE_CATEGORY,
         { id, input }
@@ -309,37 +245,8 @@ export class CategoryService {
       return response.updateCategory;
     } catch (error: any) {
       console.error('Error updating category:', error);
-      
       // Extract GraphQL error message if available
       const errorMessage = error?.response?.errors?.[0]?.message || error?.message || 'Failed to update category';
-      const errorString = JSON.stringify(error);
-      
-      // Check if the error is due to missing description field in response
-      const isSchemaFieldError = 
-        errorMessage.includes('Cannot query field "description"') ||
-        errorString.includes('Cannot query field "description"') ||
-        (error?.response?.errors && error.response.errors.some((err: any) => 
-          err.message?.includes('Cannot query field "description"')
-        ));
-      
-      if (isSchemaFieldError) {
-        console.warn('🔄 Backend schema missing description field in response. Trying basic mutation...');
-        
-        // Fallback to basic mutation without description field
-        try {
-          const fallbackResponse = await this.client.request<{ updateCategory: Category }>(
-            M_UPDATE_CATEGORY_BASIC,
-            { id, input }
-          );
-          console.info('✅ Successfully updated category using basic mutation (without description in response)');
-          return fallbackResponse.updateCategory;
-        } catch (fallbackError: any) {
-          console.error('❌ Fallback mutation also failed:', fallbackError);
-          const fallbackErrorMessage = fallbackError?.response?.errors?.[0]?.message || fallbackError?.message || 'Failed to update category';
-          throw new Error(`Failed to update category: ${fallbackErrorMessage}`);
-        }
-      }
-      
       throw new Error(errorMessage);
     }
   }
