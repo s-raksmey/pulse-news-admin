@@ -6,6 +6,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { getGqlClient } from "@/services/graphql-client";
 import { M_UPSERT_ARTICLE } from "@/services/article.gql";
 import { CategoryService, Category } from "@/services/category.gql";
+import { getCategoriesWithFallback } from "@/utils/seed-categories";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -68,16 +69,20 @@ export default function NewArticlePage() {
     try {
       setCategoriesLoading(true);
       setCategoriesError(null);
-      const categoriesData = await CategoryService.getCategoriesWithTopics();
+      
+      // Use the robust fallback mechanism
+      const categoriesData = await getCategoriesWithFallback();
       setCategories(categoriesData);
       
       // Set default category if none selected and categories are available
       if (!categorySlug && categoriesData.length > 0) {
         setCategorySlug(categoriesData[0].slug);
       }
+      
+      console.log(`📋 Loaded ${categoriesData.length} categories for article creation`);
     } catch (err) {
       console.error('Error loading categories:', err);
-      setCategoriesError('Failed to load categories');
+      setCategoriesError('Failed to load categories. Please try again.');
     } finally {
       setCategoriesLoading(false);
     }
