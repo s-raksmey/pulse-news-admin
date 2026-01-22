@@ -53,15 +53,13 @@ export default function SearchPage() {
 
     const searchInput = {
       query: query.trim(),
-      filters: {
-        status: filters.status || undefined,
-        categorySlug: filters.categorySlug || undefined,
-        topic: filters.topic || undefined,
-      },
-      pagination: {
-        take: 20,
-        skip: page * 20,
-      },
+      categorySlug: filters.categorySlug || undefined,
+      status: filters.status || undefined,
+      authorName: filters.topic || undefined, // Map topic filter to authorName search
+      take: 20,
+      skip: page * 20,
+      sortBy: 'relevance',
+      sortOrder: 'desc',
     };
 
     const response = await searchArticles(searchInput);
