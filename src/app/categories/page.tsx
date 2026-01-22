@@ -1,21 +1,17 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { useCategories } from "@/hooks/useGraphQL";
 import { CategoryList } from "@/components/categories/CategoryList";
 import { CategoryForm, CategoryFormData } from "@/components/categories/CategoryForm";
-import { Category, M_CREATE_CATEGORY, M_UPDATE_CATEGORY, M_DELETE_CATEGORY } from "@/services/category.gql";
-import { getGqlClient } from "@/services/graphql-client";
+import { Category, CategoryService } from "@/services/category.gql";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const { getCategories, loading: categoriesLoading } = useCategories();
-  const client = getGqlClient();
 
   useEffect(() => {
     loadCategories();
@@ -23,14 +19,15 @@ export default function CategoriesPage() {
 
   const loadCategories = async () => {
     try {
+      setCategoriesLoading(true);
       setError(null);
-      const response = await getCategories();
-      if (response?.categories) {
-        setCategories(response.categories);
-      }
+      const categoriesData = await CategoryService.getCategoriesWithTopics();
+      setCategories(categoriesData);
     } catch (err) {
       console.error('Error loading categories:', err);
       setError('Failed to load categories');
+    } finally {
+      setCategoriesLoading(false);
     }
   };
 
@@ -51,14 +48,18 @@ export default function CategoriesPage() {
     try {
       if (editingCategory) {
         // Update existing category
-        await client.request(M_UPDATE_CATEGORY, {
-          id: editingCategory.id,
-          input: data
+        await CategoryService.updateCategory(editingCategory.id, {
+          name: data.name,
+          slug: data.slug,
+          description: data.description,
         });
       } else {
         // Create new category
-        await client.request(M_CREATE_CATEGORY, {
-          input: data
+        await CategoryService.createCategory({
+          name: data.name,
+          slug: data.slug,
+          description: data.description,
+          topics: data.topics,
         });
       }
 
@@ -79,9 +80,7 @@ export default function CategoriesPage() {
     setError(null);
 
     try {
-      await client.request(M_DELETE_CATEGORY, {
-        id: category.id
-      });
+      await CategoryService.deleteCategory(category.id);
 
       // Reload categories
       await loadCategories();

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Category } from "@/services/category.gql";
+import { Category, Topic, CreateTopicInput } from "@/services/category.gql";
 
 interface CategoryFormProps {
   category?: Category | null;
@@ -14,6 +14,13 @@ interface CategoryFormProps {
 
 export interface CategoryFormData {
   name: string;
+  slug: string;
+  description?: string;
+  topics?: CreateTopicInput[];
+}
+
+interface TopicFormData {
+  title: string;
   slug: string;
   description?: string;
 }
@@ -32,7 +39,16 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
     name: category?.name || "",
     slug: category?.slug || "",
     description: category?.description || "",
+    topics: [],
   });
+
+  const [topics, setTopics] = useState<TopicFormData[]>(
+    category?.topics?.map(topic => ({
+      title: topic.title,
+      slug: topic.slug,
+      description: topic.description || "",
+    })) || []
+  );
 
   const [errors, setErrors] = useState<Partial<CategoryFormData>>({});
   const [autoSlug, setAutoSlug] = useState(!category); // Auto-generate slug for new categories
@@ -51,15 +67,11 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
     const newErrors: Partial<CategoryFormData> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = "Name must be at least 2 characters";
+      newErrors.name = "Category name is required";
     }
 
     if (!formData.slug.trim()) {
-      newErrors.slug = "Slug is required";
-    } else if (formData.slug.trim().length < 2) {
-      newErrors.slug = "Slug must be at least 2 characters";
+      newErrors.slug = "Category slug is required";
     } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
       newErrors.slug = "Slug can only contain lowercase letters, numbers, and hyphens";
     }
@@ -68,107 +80,222 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
     return Object.keys(newErrors).length === 0;
   };
 
+  const addTopic = () => {
+    setTopics([...topics, { title: "", slug: "", description: "" }]);
+  };
+
+  const removeTopic = (index: number) => {
+    setTopics(topics.filter((_, i) => i !== index));
+  };
+
+  const updateTopic = (index: number, field: keyof TopicFormData, value: string) => {
+    const updatedTopics = [...topics];
+    updatedTopics[index] = { ...updatedTopics[index], [field]: value };
+    
+    // Auto-generate slug for topics
+    if (field === 'title' && value) {
+      updatedTopics[index].slug = slugify(value);
+    }
+    
+    setTopics(updatedTopics);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
+
+    // Prepare topics data for submission
+    const topicsData: CreateTopicInput[] = topics
+      .filter(topic => topic.title.trim() && topic.slug.trim())
+      .map(topic => ({
+        title: topic.title.trim(),
+        slug: topic.slug.trim(),
+        description: topic.description?.trim() || null,
+        categoryId: category?.id || "", // Will be set by backend for new categories
+      }));
 
     try {
       await onSubmit({
-        name: formData.name.trim(),
-        slug: formData.slug.trim(),
-        description: formData.description?.trim() || undefined,
+        ...formData,
+        topics: topicsData,
       });
     } catch (error) {
-      console.error("Form submission error:", error);
+      console.error('Form submission error:', error);
     }
-  };
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const name = e.target.value;
-    setFormData(prev => ({ ...prev, name }));
-    
-    // Clear name error when user starts typing
-    if (errors.name) {
-      setErrors(prev => ({ ...prev, name: undefined }));
-    }
-  };
-
-  const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const slug = e.target.value;
-    setFormData(prev => ({ ...prev, slug }));
-    setAutoSlug(false); // Disable auto-generation when user manually edits slug
-    
-    // Clear slug error when user starts typing
-    if (errors.slug) {
-      setErrors(prev => ({ ...prev, slug: undefined }));
-    }
-  };
-
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const description = e.target.value;
-    setFormData(prev => ({ ...prev, description }));
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="name" className="block text-sm font-medium text-slate-700">
-          Name <span className="text-red-500">*</span>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Category Name */}
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-2">
+          Category Name *
         </label>
         <Input
           id="name"
           type="text"
           value={formData.name}
-          onChange={handleNameChange}
-          placeholder="e.g. Technology"
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="Enter category name"
           className={errors.name ? "border-red-500" : ""}
           disabled={isLoading}
         />
         {errors.name && (
-          <p className="text-sm text-red-500">{errors.name}</p>
+          <p className="mt-1 text-sm text-red-600">{errors.name}</p>
         )}
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="slug" className="block text-sm font-medium text-slate-700">
-          Slug <span className="text-red-500">*</span>
+      {/* Category Slug */}
+      <div>
+        <label htmlFor="slug" className="block text-sm font-medium text-slate-700 mb-2">
+          Category Slug *
         </label>
-        <Input
-          id="slug"
-          type="text"
-          value={formData.slug}
-          onChange={handleSlugChange}
-          placeholder="e.g. technology"
-          className={errors.slug ? "border-red-500" : ""}
-          disabled={isLoading}
-        />
+        <div className="flex items-center space-x-2">
+          <Input
+            id="slug"
+            type="text"
+            value={formData.slug}
+            onChange={(e) => {
+              setFormData({ ...formData, slug: e.target.value });
+              setAutoSlug(false); // Disable auto-generation when manually edited
+            }}
+            placeholder="category-slug"
+            className={errors.slug ? "border-red-500" : ""}
+            disabled={isLoading}
+          />
+          {!category && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setAutoSlug(true);
+                setFormData(prev => ({
+                  ...prev,
+                  slug: slugify(formData.name)
+                }));
+              }}
+              disabled={!formData.name || isLoading}
+            >
+              Auto
+            </Button>
+          )}
+        </div>
         {errors.slug && (
-          <p className="text-sm text-red-500">{errors.slug}</p>
+          <p className="mt-1 text-sm text-red-600">{errors.slug}</p>
         )}
-        <p className="text-xs text-slate-500">
+        <p className="mt-1 text-xs text-slate-500">
           Used in URLs. Only lowercase letters, numbers, and hyphens allowed.
         </p>
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="description" className="block text-sm font-medium text-slate-700">
-          Description
+      {/* Description */}
+      <div>
+        <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-2">
+          Description (optional)
         </label>
         <textarea
           id="description"
-          value={formData.description}
-          onChange={handleDescriptionChange}
-          placeholder="Optional description for this category"
+          value={formData.description || ""}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           rows={3}
+          className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Optional description for this category"
           disabled={isLoading}
-          className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-500"
         />
       </div>
 
-      <div className="flex justify-end space-x-2 pt-4">
+      {/* Topics Section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <label className="block text-sm font-medium text-slate-700">
+            Topics (optional)
+          </label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addTopic}
+            disabled={isLoading}
+          >
+            + Add Topic
+          </Button>
+        </div>
+        
+        {topics.length === 0 ? (
+          <p className="text-sm text-slate-500 italic">
+            No topics added yet. Topics help organize articles within this category.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {topics.map((topic, index) => (
+              <div key={index} className="p-4 border border-slate-200 rounded-lg bg-slate-50">
+                <div className="flex items-start justify-between mb-3">
+                  <h4 className="text-sm font-medium text-slate-700">Topic {index + 1}</h4>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeTopic(index)}
+                    disabled={isLoading}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    Remove
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                      Topic Title *
+                    </label>
+                    <Input
+                      type="text"
+                      value={topic.title}
+                      onChange={(e) => updateTopic(index, 'title', e.target.value)}
+                      placeholder="e.g., Markets, Technology"
+                      disabled={isLoading}
+                      size="sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                      Topic Slug *
+                    </label>
+                    <Input
+                      type="text"
+                      value={topic.slug}
+                      onChange={(e) => updateTopic(index, 'slug', e.target.value)}
+                      placeholder="e.g., markets, technology"
+                      disabled={isLoading}
+                      size="sm"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Description (optional)
+                  </label>
+                  <textarea
+                    value={topic.description || ""}
+                    onChange={(e) => updateTopic(index, 'description', e.target.value)}
+                    rows={2}
+                    className="w-full px-2 py-1 text-sm border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Brief description of this topic"
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Form Actions */}
+      <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200">
         <Button
           type="button"
           variant="outline"
@@ -187,3 +314,4 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
     </form>
   );
 }
+
