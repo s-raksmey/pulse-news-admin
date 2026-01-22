@@ -15,6 +15,7 @@ import { getCategoriesWithFallback } from "@/utils/seed-categories";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 import type { OutputData } from "@editorjs/editorjs";
 import type { NewsEditorRef } from "@/components/editor/news-editor";
@@ -69,6 +70,9 @@ export default function EditArticlePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+
+  // Confirmation dialog state
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   /** Editor initial content (ONE TIME) */
   const [initialContent, setInitialContent] = useState<OutputData>({
@@ -184,9 +188,20 @@ export default function EditArticlePage() {
       if (redirectToList) {
         router.push("/articles");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving article:', error);
-      alert('Failed to save article. Please try again.');
+      
+      // Extract specific error message from GraphQL response
+      let errorMessage = 'Failed to save article. Please try again.';
+      
+      if (error?.response?.errors?.[0]?.message) {
+        errorMessage = error.response.errors[0].message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      // Show user-friendly error message
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -201,8 +216,11 @@ export default function EditArticlePage() {
     await upsertArticle(nextStatus, false);
   }
 
-  async function remove() {
-    if (!confirm("Delete this article?")) return;
+  function handleDeleteClick() {
+    setConfirmDeleteOpen(true);
+  }
+
+  async function handleConfirmDelete() {
     setSaving(true);
     try {
       await client.request(M_DELETE_ARTICLE, { id });
@@ -243,7 +261,7 @@ export default function EditArticlePage() {
           <Button onClick={save} disabled={saving || !title || !categorySlug}>
             Save
           </Button>
-          <Button variant="ghost" onClick={remove} disabled={saving}>
+          <Button variant="ghost" onClick={handleDeleteClick} disabled={saving}>
             Delete
           </Button>
         </div>
@@ -382,6 +400,17 @@ export default function EditArticlePage() {
 
       {/* ---------- Editor ---------- */}
       <NewsEditor ref={editorRef} initialData={initialContent} />
+
+      <ConfirmationDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Delete Article"
+        description={`Are you sure you want to delete the article "${title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={handleConfirmDelete}
+      />
     </main>
   );
 }
