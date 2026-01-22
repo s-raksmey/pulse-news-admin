@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { CategoryList } from "@/components/categories/CategoryList";
 import { CategoryForm, CategoryFormData } from "@/components/categories/CategoryForm";
 import { Category, CategoryService } from "@/services/category.gql";
+import { seedCategoriesFromMegaNav, getCategoriesWithFallback } from "@/utils/seed-categories";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -11,6 +12,7 @@ export default function CategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [seedingCategories, setSeedingCategories] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,13 +23,34 @@ export default function CategoriesPage() {
     try {
       setCategoriesLoading(true);
       setError(null);
-      const categoriesData = await CategoryService.getCategoriesWithTopics();
+      
+      // Use the robust fallback mechanism
+      const categoriesData = await getCategoriesWithFallback();
       setCategories(categoriesData);
+      
+      console.log(`📋 Loaded ${categoriesData.length} categories for management`);
     } catch (err) {
       console.error('Error loading categories:', err);
       setError('Failed to load categories');
     } finally {
       setCategoriesLoading(false);
+    }
+  };
+
+  const handleSeedCategories = async () => {
+    try {
+      setSeedingCategories(true);
+      setError(null);
+      
+      await seedCategoriesFromMegaNav();
+      await loadCategories(); // Reload after seeding
+      
+      alert('✅ Categories seeded successfully from MEGA_NAV!');
+    } catch (err) {
+      console.error('Error seeding categories:', err);
+      setError('Failed to seed categories from MEGA_NAV');
+    } finally {
+      setSeedingCategories(false);
     }
   };
 
@@ -54,13 +77,29 @@ export default function CategoriesPage() {
           description: data.description,
         });
       } else {
-        // Create new category with topics
-        await CategoryService.createCategory({
+        // Create new category (topics will be created separately)
+        const createdCategory = await CategoryService.createCategory({
           name: data.name,
           slug: data.slug,
           description: data.description,
-          topics: data.topics, // Enable topic creation
         });
+        
+        // Create topics for the new category
+        if (data.topics && data.topics.length > 0) {
+          for (const topicData of data.topics) {
+            try {
+              await CategoryService.createTopic({
+                slug: topicData.slug,
+                title: topicData.title,
+                description: topicData.description,
+                categoryId: createdCategory.id,
+              });
+            } catch (topicError) {
+              console.error('Error creating topic:', topicError);
+              // Continue with other topics
+            }
+          }
+        }
       }
 
       // Reload categories and close form
@@ -150,7 +189,9 @@ export default function CategoriesPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreate={handleCreate}
+        onSeedCategories={handleSeedCategories}
         isLoading={isLoading}
+        isSeedingCategories={seedingCategories}
       />
     </div>
   );
