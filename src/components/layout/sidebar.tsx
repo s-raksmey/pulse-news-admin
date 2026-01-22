@@ -11,7 +11,6 @@ import {
   BarChart3,
   Tags,
   Image,
-  Search,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -34,13 +33,7 @@ const navigation = [
     badge: null,
     description: "Overview & stats"
   },
-  {
-    name: "Search",
-    href: "/search",
-    icon: Search,
-    badge: null,
-    description: "Find content"
-  },
+
   {
     name: "Articles",
     href: "/articles",
