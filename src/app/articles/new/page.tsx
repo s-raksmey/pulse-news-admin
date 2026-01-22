@@ -1,14 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 
 import { getGqlClient } from "@/services/graphql-client";
 import { M_UPSERT_ARTICLE } from "@/services/article.gql";
+import { CategoryService, Category } from "@/services/category.gql";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MEGA_NAV } from "@/data/mega-nav";
 
 import type { OutputData } from "@editorjs/editorjs";
 import type { NewsEditorRef } from "@/components/editor/news-editor";
@@ -47,31 +47,59 @@ export default function NewArticlePage() {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
-
-  /* ✅ ADDED */
   const [authorName, setAuthorName] = useState("");
-
-  const [categorySlug, setCategorySlug] = useState<string>(
-    Object.keys(MEGA_NAV)[0]
-  );
+  const [categorySlug, setCategorySlug] = useState<string>("");
   const [topic, setTopic] = useState<string>("");
-
   const [status, setStatus] = useState<"DRAFT" | "PUBLISHED">("DRAFT");
   const [isBreaking, setIsBreaking] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const categoryOptions = Object.keys(MEGA_NAV);
-  const topicOptions = categorySlug
-    ? MEGA_NAV[categorySlug].explore.items
-        .map((i) => i.href.split("/").pop())
-        .filter((t): t is string => Boolean(t))
-    : [];
+  // Category and topic management
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+
+  // Load categories on component mount
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      setCategoriesError(null);
+      const categoriesData = await CategoryService.getCategoriesWithTopics();
+      setCategories(categoriesData);
+      
+      // Set default category if none selected and categories are available
+      if (!categorySlug && categoriesData.length > 0) {
+        setCategorySlug(categoriesData[0].slug);
+      }
+    } catch (err) {
+      console.error('Error loading categories:', err);
+      setCategoriesError('Failed to load categories');
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  // Get topics for selected category
+  const selectedCategory = categories.find(cat => cat.slug === categorySlug);
+  const topicOptions = selectedCategory?.topics || [];
 
   /* -------------------------
      Save
   ------------------------- */
   async function save() {
-    if (!title) return;
+    if (!title) {
+      alert("Please enter a title.");
+      return;
+    }
+
+    if (!categorySlug) {
+      alert("Please select a category.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -83,7 +111,7 @@ export default function NewArticlePage() {
           title,
           slug: slug || slugify(title),
           excerpt,
-          authorName, // ✅ ADDED
+          authorName,
           categorySlug,
           topic: topic || null,
           status,
@@ -93,6 +121,9 @@ export default function NewArticlePage() {
       });
 
       window.location.href = "/articles";
+    } catch (error) {
+      console.error('Error saving article:', error);
+      alert('Failed to save article. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -141,7 +172,7 @@ export default function NewArticlePage() {
           <Button variant="outline" onClick={previewNewArticle} disabled={!title}>
             Preview
           </Button>
-          <Button onClick={save} disabled={saving || !title}>
+          <Button onClick={save} disabled={saving || !title || !categorySlug}>
             {saving ? "Saving..." : "Save"}
           </Button>
         </div>
@@ -189,24 +220,47 @@ export default function NewArticlePage() {
           />
         </div>
 
+        {/* Categories Error Display */}
+        {categoriesError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div className="text-red-600 text-sm">⚠️ {categoriesError}</div>
+            <button 
+              onClick={loadCategories}
+              className="text-red-700 underline text-sm mt-1"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-2">
             <label className="text-xs font-semibold text-slate-600">
               Category
             </label>
             <select
-              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm disabled:bg-slate-50 disabled:text-slate-500"
               value={categorySlug}
               onChange={(e) => {
                 setCategorySlug(e.target.value);
                 setTopic("");
               }}
+              disabled={categoriesLoading || categories.length === 0}
             >
-              {categoryOptions.map((cat) => (
-                <option key={cat} value={cat}>
-                  {MEGA_NAV[cat].root.label}
-                </option>
-              ))}
+              {categoriesLoading ? (
+                <option value="">Loading categories...</option>
+              ) : categories.length === 0 ? (
+                <option value="">No categories available</option>
+              ) : (
+                <>
+                  <option value="">— Select Category —</option>
+                  {categories.map((category) => (
+                    <option key={category.slug} value={category.slug}>
+                      {category.name}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
           </div>
 
@@ -215,14 +269,15 @@ export default function NewArticlePage() {
               Topic (optional)
             </label>
             <select
-              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm disabled:bg-slate-50 disabled:text-slate-500"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
+              disabled={!categorySlug || topicOptions.length === 0}
             >
               <option value="">— No topic —</option>
-              {topicOptions.map((t) => (
-                <option key={t} value={t}>
-                  {titleCase(t)}
+              {topicOptions.map((topicItem) => (
+                <option key={topicItem.slug} value={topicItem.slug}>
+                  {topicItem.title}
                 </option>
               ))}
             </select>

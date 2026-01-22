@@ -10,10 +10,10 @@ import {
   M_UPSERT_ARTICLE,
   M_DELETE_ARTICLE,
 } from "@/services/article.gql";
+import { CategoryService, Category } from "@/services/category.gql";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MEGA_NAV } from "@/data/mega-nav";
 
 import type { OutputData } from "@editorjs/editorjs";
 import type { NewsEditorRef } from "@/components/editor/news-editor";
@@ -58,47 +58,43 @@ export default function EditArticlePage() {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
-
-  /* ✅ ADDED */
   const [authorName, setAuthorName] = useState("");
-
-  const [categorySlug, setCategorySlug] = useState<string>(
-    Object.keys(MEGA_NAV)[0]
-  );
+  const [categorySlug, setCategorySlug] = useState<string>("");
   const [topic, setTopic] = useState<string>("");
-
-  const [status, setStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED">(
-    "DRAFT"
-  );
+  const [status, setStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED">("DRAFT");
   const [isBreaking, setIsBreaking] = useState(false);
+
+  // Category and topic management
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
   /** Editor initial content (ONE TIME) */
   const [initialContent, setInitialContent] = useState<OutputData>({
     blocks: [],
   });
 
-  /** Stable derived data */
-  const categoryOptions = useMemo(() => Object.keys(MEGA_NAV), []);
-  const topicOptions = useMemo(() => {
-    if (!categorySlug) return [];
+  // Get topics for selected category
+  const selectedCategory = categories.find(cat => cat.slug === categorySlug);
+  const topicOptions = selectedCategory?.topics || [];
 
-    const cfg = MEGA_NAV[categorySlug];
-    if (!cfg) return [];
+  /* -------------------------
+     Load categories
+  ------------------------- */
+  const loadCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      setCategoriesError(null);
+      const categoriesData = await CategoryService.getCategoriesWithTopics();
+      setCategories(categoriesData);
+    } catch (err) {
+      console.error('Error loading categories:', err);
+      setCategoriesError('Failed to load categories');
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
 
-    const allItems = [
-      ...cfg.explore.items,
-      ...cfg.shop.items,
-      ...cfg.more.items,
-    ];
-
-    return Array.from(
-      new Set(
-        allItems
-          .map((i) => i.href.split("/").pop())
-          .filter((t): t is string => Boolean(t))
-      )
-    );
-  }, [categorySlug]);
   /* -------------------------
      Load article
   ------------------------- */
@@ -106,33 +102,59 @@ export default function EditArticlePage() {
     let active = true;
 
     (async () => {
-      const data = await client.request(Q_ARTICLE_BY_ID, { id });
-      if (!active) return;
+      try {
+        // Load categories and article in parallel
+        const [categoriesData, articleData] = await Promise.all([
+          CategoryService.getCategoriesWithTopics(),
+          client.request(Q_ARTICLE_BY_ID, { id })
+        ]);
 
-      const article = data.articleById;
+        if (!active) return;
 
-      setTitle(article.title);
-      setSlug(article.slug);
-      setExcerpt(article.excerpt ?? "");
-      setAuthorName(article.authorName ?? ""); // ✅ ADDED
-      setCategorySlug(article.category?.slug ?? categoryOptions[0]);
-      setTopic(article.topic ?? "");
-      setStatus(article.status);
-      setIsBreaking(article.isBreaking ?? false);
-      setInitialContent(article.contentJson ?? { blocks: [] });
+        // Set categories
+        setCategories(categoriesData);
+        setCategoriesLoading(false);
 
-      setLoading(false);
+        // Set article data
+        const article = articleData.articleById;
+        setTitle(article.title);
+        setSlug(article.slug);
+        setExcerpt(article.excerpt ?? "");
+        setAuthorName(article.authorName ?? "");
+        setCategorySlug(article.category?.slug ?? "");
+        setTopic(article.topic ?? "");
+        setStatus(article.status);
+        setIsBreaking(article.isBreaking ?? false);
+        setInitialContent(article.contentJson ?? { blocks: [] });
+
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        setCategoriesError('Failed to load data');
+        setCategoriesLoading(false);
+        setLoading(false);
+      }
     })();
 
     return () => {
       active = false;
     };
-  }, [client, id, categoryOptions]);
+  }, [client, id]);
 
   /* -------------------------
      Actions
   ------------------------- */
   async function upsertArticle(nextStatus = status, redirectToList = false) {
+    if (!title) {
+      alert("Please enter a title.");
+      return;
+    }
+
+    if (!categorySlug) {
+      alert("Please select a category.");
+      return;
+    }
+
     setSaving(true);
     try {
       const contentJson = (await editorRef.current?.save()) ?? { blocks: [] };
@@ -143,7 +165,7 @@ export default function EditArticlePage() {
           title,
           slug,
           excerpt,
-          authorName, // ✅ ADDED
+          authorName,
           categorySlug,
           topic: topic || null,
           status: nextStatus,
@@ -157,6 +179,9 @@ export default function EditArticlePage() {
       if (redirectToList) {
         router.push("/articles");
       }
+    } catch (error) {
+      console.error('Error saving article:', error);
+      alert('Failed to save article. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -207,10 +232,10 @@ export default function EditArticlePage() {
           <Button variant="outline" onClick={preview} disabled={!slug}>
             Preview
           </Button>
-          <Button variant="outline" onClick={togglePublish} disabled={saving}>
+          <Button variant="outline" onClick={togglePublish} disabled={saving || !title || !categorySlug}>
             {status === "PUBLISHED" ? "Unpublish" : "Publish"}
           </Button>
-          <Button onClick={save} disabled={saving || !title}>
+          <Button onClick={save} disabled={saving || !title || !categorySlug}>
             Save
           </Button>
           <Button variant="ghost" onClick={remove} disabled={saving}>
@@ -254,24 +279,47 @@ export default function EditArticlePage() {
           <Input value={excerpt} onChange={(e) => setExcerpt(e.target.value)} />
         </div>
 
+        {/* Categories Error Display */}
+        {categoriesError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div className="text-red-600 text-sm">⚠️ {categoriesError}</div>
+            <button 
+              onClick={loadCategories}
+              className="text-red-700 underline text-sm mt-1"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-2">
             <label className="text-xs font-semibold text-slate-600">
               Category
             </label>
             <select
-              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm disabled:bg-slate-50 disabled:text-slate-500"
               value={categorySlug}
               onChange={(e) => {
                 setCategorySlug(e.target.value);
                 setTopic("");
               }}
+              disabled={categoriesLoading || categories.length === 0}
             >
-              {categoryOptions.map((cat) => (
-                <option key={cat} value={cat}>
-                  {MEGA_NAV[cat].root.label}
-                </option>
-              ))}
+              {categoriesLoading ? (
+                <option value="">Loading categories...</option>
+              ) : categories.length === 0 ? (
+                <option value="">No categories available</option>
+              ) : (
+                <>
+                  <option value="">— Select Category —</option>
+                  {categories.map((category) => (
+                    <option key={category.slug} value={category.slug}>
+                      {category.name}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
           </div>
 
@@ -280,14 +328,15 @@ export default function EditArticlePage() {
               Topic (optional)
             </label>
             <select
-              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm disabled:bg-slate-50 disabled:text-slate-500"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
+              disabled={!categorySlug || topicOptions.length === 0}
             >
               <option value="">— No topic —</option>
-              {topicOptions.map((t) => (
-                <option key={t} value={t}>
-                  {titleCase(t)}
+              {topicOptions.map((topicItem) => (
+                <option key={topicItem.slug} value={topicItem.slug}>
+                  {topicItem.title}
                 </option>
               ))}
             </select>
