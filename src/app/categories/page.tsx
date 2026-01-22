@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { CategoryList } from "@/components/categories/CategoryList";
 import { CategoryForm, CategoryFormData } from "@/components/categories/CategoryForm";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Category, CategoryService } from "@/services/category.gql";
 import { seedCategoriesFromMegaNav, getCategoriesWithFallback } from "@/utils/seed-categories";
 
@@ -14,6 +15,11 @@ export default function CategoriesPage() {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [seedingCategories, setSeedingCategories] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Confirmation dialog states
+  const [confirmCreateOpen, setConfirmCreateOpen] = useState(false);
+  const [confirmUpdateOpen, setConfirmUpdateOpen] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<CategoryFormData | null>(null);
 
   useEffect(() => {
     loadCategories();
@@ -65,6 +71,19 @@ export default function CategoriesPage() {
   };
 
   const handleFormSubmit = async (data: CategoryFormData) => {
+    // Store the form data and show confirmation dialog
+    setPendingFormData(data);
+    
+    if (editingCategory) {
+      setConfirmUpdateOpen(true);
+    } else {
+      setConfirmCreateOpen(true);
+    }
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (!pendingFormData) return;
+    
     setIsLoading(true);
     setError(null);
 
@@ -72,32 +91,67 @@ export default function CategoriesPage() {
       if (editingCategory) {
         // Update existing category
         await CategoryService.updateCategory(editingCategory.id, {
-          name: data.name,
-          slug: data.slug,
-          description: data.description,
+          name: pendingFormData.name,
+          slug: pendingFormData.slug,
+          description: pendingFormData.description,
         });
+        
+        console.log(`✅ Successfully updated category: ${pendingFormData.name}`);
       } else {
         // Create new category (topics will be created separately)
         const createdCategory = await CategoryService.createCategory({
-          name: data.name,
-          slug: data.slug,
-          description: data.description,
+          name: pendingFormData.name,
+          slug: pendingFormData.slug,
+          description: pendingFormData.description,
         });
         
+        console.log(`✅ Successfully created category: ${pendingFormData.name} (ID: ${createdCategory.id})`);
+        
+        // Validate that we have the category ID before creating topics
+        if (!createdCategory.id) {
+          throw new Error('Category was created but ID is missing. Cannot create topics.');
+        }
+        
         // Create topics for the new category
-        if (data.topics && data.topics.length > 0) {
-          for (const topicData of data.topics) {
+        if (pendingFormData.topics && pendingFormData.topics.length > 0) {
+          const topicResults = [];
+          let successCount = 0;
+          let failureCount = 0;
+          
+          for (const topicData of pendingFormData.topics) {
             try {
-              await CategoryService.createTopic({
+              const createdTopic = await CategoryService.createTopic({
                 slug: topicData.slug,
                 title: topicData.title,
                 description: topicData.description,
                 categoryId: createdCategory.id,
               });
-            } catch (topicError) {
+              
+              console.log(`✅ Successfully created topic: ${topicData.title}`);
+              topicResults.push({ topic: topicData.title, success: true });
+              successCount++;
+            } catch (topicError: any) {
               console.error('Error creating topic:', topicError);
-              // Continue with other topics
+              const errorMessage = topicError.message || 'Unknown error';
+              topicResults.push({ topic: topicData.title, success: false, error: errorMessage });
+              failureCount++;
             }
+          }
+          
+          // Provide user feedback about topic creation results
+          if (failureCount > 0) {
+            const failedTopics = topicResults
+              .filter(result => !result.success)
+              .map(result => `${result.topic} (${result.error})`)
+              .join(', ');
+            
+            if (successCount > 0) {
+              setError(`Category created successfully, but ${failureCount} topic(s) failed to create: ${failedTopics}`);
+            } else {
+              setError(`Category created but all ${failureCount} topics failed to create: ${failedTopics}`);
+            }
+          } else if (successCount > 0) {
+            console.log(`✅ Successfully created category with ${successCount} topics`);
           }
         }
       }
@@ -106,12 +160,19 @@ export default function CategoriesPage() {
       await loadCategories();
       setShowForm(false);
       setEditingCategory(null);
+      setPendingFormData(null);
     } catch (err: any) {
       console.error('Error saving category:', err);
       setError(err.message || 'Failed to save category');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCancelConfirmation = () => {
+    setPendingFormData(null);
+    setConfirmCreateOpen(false);
+    setConfirmUpdateOpen(false);
   };
 
   const handleDelete = async (category: Category) => {
@@ -192,6 +253,41 @@ export default function CategoriesPage() {
         onSeedCategories={handleSeedCategories}
         isLoading={isLoading}
         isSeedingCategories={seedingCategories}
+      />
+
+      {/* Confirmation Dialogs */}
+      <ConfirmationDialog
+        open={confirmCreateOpen}
+        onOpenChange={setConfirmCreateOpen}
+        title="Create Category"
+        description={
+          pendingFormData
+            ? `Are you sure you want to create the category "${pendingFormData.name}"${
+                pendingFormData.topics && pendingFormData.topics.length > 0
+                  ? ` with ${pendingFormData.topics.length} topic(s)`
+                  : ''
+              }?`
+            : ""
+        }
+        confirmText="Create"
+        cancelText="Cancel"
+        onConfirm={handleConfirmSubmit}
+        onCancel={handleCancelConfirmation}
+      />
+
+      <ConfirmationDialog
+        open={confirmUpdateOpen}
+        onOpenChange={setConfirmUpdateOpen}
+        title="Update Category"
+        description={
+          pendingFormData && editingCategory
+            ? `Are you sure you want to update the category "${editingCategory.name}" to "${pendingFormData.name}"?`
+            : ""
+        }
+        confirmText="Update"
+        cancelText="Cancel"
+        onConfirm={handleConfirmSubmit}
+        onCancel={handleCancelConfirmation}
       />
     </div>
   );
