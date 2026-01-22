@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useCounts } from "@/hooks/useCounts";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -25,7 +26,7 @@ interface SidebarProps {
   className?: string;
 }
 
-const navigation = [
+const getNavigation = (counts: { articles: number; users: number; categories: number; media: number }) => [
   {
     name: "Dashboard",
     href: "/",
@@ -33,26 +34,25 @@ const navigation = [
     badge: null,
     description: "Overview & stats"
   },
-
   {
     name: "Articles",
     href: "/articles",
     icon: FileText,
-    badge: "12",
+    badge: counts.articles > 0 ? counts.articles.toString() : null,
     description: "Manage content"
   },
   {
     name: "Categories",
     href: "/categories",
     icon: Tags,
-    badge: null,
+    badge: counts.categories > 0 ? counts.categories.toString() : null,
     description: "Organize content"
   },
   {
     name: "Media",
     href: "/media",
     icon: Image,
-    badge: null,
+    badge: counts.media > 0 ? counts.media.toString() : null,
     description: "Files & images"
   },
   {
@@ -66,7 +66,7 @@ const navigation = [
     name: "Users",
     href: "/users",
     icon: Users,
-    badge: "3",
+    badge: counts.users > 0 ? counts.users.toString() : null,
     description: "User management"
   },
   {
@@ -80,6 +80,8 @@ const navigation = [
 
 export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
   const pathname = usePathname();
+  const { counts, loading } = useCounts();
+  const navigation = getNavigation(counts);
 
   return (
     <motion.aside

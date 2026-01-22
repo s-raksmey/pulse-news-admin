@@ -117,6 +117,53 @@ export default function MediaPage() {
     });
   };
 
+  const handleSelectAll = () => {
+    if (selectedFiles.length === filteredFiles.length) {
+      // Deselect all
+      setSelectedFiles([]);
+    } else {
+      // Select all
+      setSelectedFiles(filteredFiles.map(file => file.id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedFiles.length === 0) return;
+    
+    const filesToDelete = files.filter(file => selectedFiles.includes(file.id));
+    
+    try {
+      // Delete files one by one
+      const deletePromises = filesToDelete.map(file =>
+        fetch(`/api/media/upload?id=${file.id}&filename=${file.filename}`, {
+          method: 'DELETE',
+        })
+      );
+      
+      const responses = await Promise.all(deletePromises);
+      const results = await Promise.all(responses.map(res => res.json()));
+      
+      // Filter out successfully deleted files
+      const successfullyDeleted = results
+        .map((result, index) => ({ result, file: filesToDelete[index] }))
+        .filter(({ result }) => result.success)
+        .map(({ file }) => file.id);
+      
+      if (successfullyDeleted.length > 0) {
+        setFiles(prev => prev.filter(f => !successfullyDeleted.includes(f.id)));
+        setSelectedFiles([]);
+        console.log(`Successfully deleted ${successfullyDeleted.length} files`);
+      }
+      
+      const failedCount = results.filter(result => !result.success).length;
+      if (failedCount > 0) {
+        console.error(`Failed to delete ${failedCount} files`);
+      }
+    } catch (error) {
+      console.error('Error during bulk delete:', error);
+    }
+  };
+
   const handleFileDelete = async (file: MediaFile) => {
     try {
       const response = await fetch(`/api/media/upload?id=${file.id}&filename=${file.filename}`, {
@@ -238,6 +285,22 @@ export default function MediaPage() {
             folders={folders}
           />
 
+          {/* Select All */}
+          {filteredFiles.length > 0 && (
+            <div className="flex items-center gap-2 p-4 bg-slate-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="select-all"
+                checked={selectedFiles.length === filteredFiles.length && filteredFiles.length > 0}
+                onChange={handleSelectAll}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <label htmlFor="select-all" className="text-sm font-medium text-slate-700">
+                Select All ({filteredFiles.length} files)
+              </label>
+            </div>
+          )}
+
           {/* Selection Actions */}
           {selectedFiles.length > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -249,7 +312,7 @@ export default function MediaPage() {
                   <Button size="sm" variant="outline">
                     Download
                   </Button>
-                  <Button size="sm" variant="destructive">
+                  <Button size="sm" variant="destructive" onClick={handleBulkDelete}>
                     Delete
                   </Button>
                   <Button 
