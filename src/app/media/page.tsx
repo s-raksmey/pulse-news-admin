@@ -1,27 +1,279 @@
-// src/app/media/page.tsx
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Upload, FolderPlus, Grid, List, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileUpload } from '@/components/media/file-upload';
+import { MediaGrid } from '@/components/media/media-grid';
+import { MediaFilters } from '@/components/media/media-filters';
+import type { MediaFile, MediaFilters as MediaFiltersType } from '@/types/media';
+
 export default function MediaPage() {
+  const [files, setFiles] = useState<MediaFile[]>([]);
+  const [folders, setFolders] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [filters, setFilters] = useState<MediaFiltersType>({
+    sortBy: 'date',
+    sortOrder: 'desc',
+    page: 1,
+    limit: 20,
+  });
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Load media files
+  const loadFiles = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/media/upload');
+      const data = await response.json();
+      
+      if (data.success) {
+        setFiles(data.files || []);
+        setFolders(data.folders || []);
+      }
+    } catch (error) {
+      console.error('Failed to load files:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFiles();
+  }, []);
+
+  // Filter and sort files
+  const filteredFiles = React.useMemo(() => {
+    let result = [...files];
+
+    // Apply filters
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      result = result.filter(file => 
+        file.originalName.toLowerCase().includes(search) ||
+        file.tags?.some(tag => tag.toLowerCase().includes(search))
+      );
+    }
+
+    if (filters.type) {
+      result = result.filter(file => file.type === filters.type);
+    }
+
+    if (filters.folder) {
+      result = result.filter(file => file.folder === filters.folder);
+    }
+
+    if (filters.tags && filters.tags.length > 0) {
+      result = result.filter(file => 
+        filters.tags!.some(tag => file.tags?.includes(tag))
+      );
+    }
+
+    // Apply sorting
+    result.sort((a, b) => {
+      let aValue: any, bValue: any;
+
+      switch (filters.sortBy) {
+        case 'name':
+          aValue = a.originalName.toLowerCase();
+          bValue = b.originalName.toLowerCase();
+          break;
+        case 'size':
+          aValue = a.size;
+          bValue = b.size;
+          break;
+        case 'type':
+          aValue = a.type;
+          bValue = b.type;
+          break;
+        case 'date':
+        default:
+          aValue = new Date(a.uploadedAt).getTime();
+          bValue = new Date(b.uploadedAt).getTime();
+          break;
+      }
+
+      if (aValue < bValue) return filters.sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return filters.sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  }, [files, filters]);
+
+  const handleUploadComplete = (uploadedFiles: MediaFile[]) => {
+    setFiles(prev => [...uploadedFiles, ...prev]);
+  };
+
+  const handleFileSelect = (file: MediaFile) => {
+    setSelectedFiles(prev => {
+      if (prev.includes(file.id)) {
+        return prev.filter(id => id !== file.id);
+      } else {
+        return [...prev, file.id];
+      }
+    });
+  };
+
+  const handleFileDelete = async (file: MediaFile) => {
+    if (confirm(`Are you sure you want to delete "${file.originalName}"?`)) {
+      // TODO: Implement delete API
+      setFiles(prev => prev.filter(f => f.id !== file.id));
+    }
+  };
+
+  const handleFileEdit = (file: MediaFile) => {
+    // TODO: Implement edit modal
+    console.log('Edit file:', file);
+  };
+
+  const stats = React.useMemo(() => {
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    const byType = files.reduce((acc, file) => {
+      acc[file.type] = (acc[file.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      totalFiles: files.length,
+      totalSize,
+      byType,
+    };
+  }, [files]);
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   return (
     <div className="space-y-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">
-          Media Library
-        </h1>
-        <p className="text-slate-600">
-          Manage your files and images.
-        </p>
-      </div>
-
-      <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
-        <h2 className="text-xl font-semibold text-slate-900 mb-2">
-          Media Management
-        </h2>
-        <p className="text-slate-600 mb-4">
-          This page is under development. Media library functionality will be available soon.
-        </p>
-        <div className="inline-flex items-center px-4 py-2 bg-slate-100 rounded-lg text-sm text-slate-600">
-          🏗️ Coming Soon
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">
+            Media Library
+          </h1>
+          <p className="text-slate-600">
+            Manage your files and images. {stats.totalFiles} files ({formatFileSize(stats.totalSize)})
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadFiles}
+            disabled={loading}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          
+          <div className="flex items-center border border-slate-200 rounded-lg">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className="rounded-r-none"
+            >
+              <Grid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="rounded-l-none"
+            >
+              <List className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Stats */}
+      {stats.totalFiles > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {Object.entries(stats.byType).map(([type, count]) => (
+            <div key={type} className="bg-white border border-slate-200 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-slate-900">{count}</div>
+              <div className="text-sm text-slate-500 capitalize">{type}s</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Main Content */}
+      <Tabs defaultValue="library" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="library">Library</TabsTrigger>
+          <TabsTrigger value="upload">Upload</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="library" className="space-y-6">
+          {/* Filters */}
+          <MediaFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            folders={folders}
+          />
+
+          {/* Selection Actions */}
+          {selectedFiles.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-blue-900">
+                  {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline">
+                    Download
+                  </Button>
+                  <Button size="sm" variant="destructive">
+                    Delete
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => setSelectedFiles([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Files Grid */}
+          {loading ? (
+            <div className="text-center py-12">
+              <RefreshCw className="w-8 h-8 text-slate-400 mx-auto mb-4 animate-spin" />
+              <p className="text-slate-500">Loading files...</p>
+            </div>
+          ) : (
+            <MediaGrid
+              files={filteredFiles}
+              onFileSelect={handleFileSelect}
+              onFileDelete={handleFileDelete}
+              onFileEdit={handleFileEdit}
+              selectedFiles={selectedFiles}
+              selectable={true}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="upload" className="space-y-6">
+          <FileUpload
+            onUploadComplete={handleUploadComplete}
+            maxFiles={10}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
-  )
+  );
 }
