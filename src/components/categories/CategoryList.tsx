@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Category } from "@/services/category.gql";
 import { Edit, Trash2, Plus } from "lucide-react";
 
@@ -26,28 +25,22 @@ export function CategoryList({
   isSeedingCategories = false
 }: CategoryListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
-  const handleDeleteClick = (category: Category) => {
-    setCategoryToDelete(category);
-    setConfirmDeleteOpen(true);
-  };
+  const handleDelete = async (category: Category) => {
+    if (deletingId) return; // Prevent multiple delete operations
+    
+    const confirmed = window.confirm(
+      `Are you sure you want to delete the category "${category.name}"?\n\nThis action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
 
-  const handleConfirmDelete = async () => {
-    if (!categoryToDelete || deletingId) return;
-
-    setDeletingId(categoryToDelete.id);
+    setDeletingId(category.id);
     try {
-      await onDelete(categoryToDelete);
+      await onDelete(category);
     } finally {
       setDeletingId(null);
-      setCategoryToDelete(null);
     }
-  };
-
-  const handleCancelDelete = () => {
-    setCategoryToDelete(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -202,7 +195,7 @@ export function CategoryList({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteClick(category)}
+                          onClick={() => handleDelete(category)}
                           disabled={isLoading || deletingId !== null}
                           className="text-red-600 hover:text-red-700 hover:border-red-300"
                         >
@@ -221,22 +214,6 @@ export function CategoryList({
           </div>
         </div>
       )}
-
-      <ConfirmationDialog
-        open={confirmDeleteOpen}
-        onOpenChange={setConfirmDeleteOpen}
-        title="Delete Category"
-        description={
-          categoryToDelete
-            ? `Are you sure you want to delete the category "${categoryToDelete.name}"? This action cannot be undone and will also delete all topics in this category.`
-            : ""
-        }
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="destructive"
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
-      />
     </div>
   );
 }
