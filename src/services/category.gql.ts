@@ -92,23 +92,9 @@ export const M_DELETE_CATEGORY = gql`
 // TOPIC MUTATIONS
 // ============================================================================
 
-export const M_CREATE_TOPIC = gql`
-  mutation CreateTopic($input: CreateTopicInput!) {
-    createTopic(input: $input) {
-      id
-      slug
-      title
-      description
-      categoryId
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-export const M_UPDATE_TOPIC = gql`
-  mutation UpdateTopic($id: ID!, $input: UpdateTopicInput!) {
-    updateTopic(id: $id, input: $input) {
+export const M_UPSERT_TOPIC = gql`
+  mutation UpsertTopic($input: UpsertTopicInput!) {
+    upsertTopic(input: $input) {
       id
       slug
       title
@@ -154,7 +140,6 @@ export interface CreateCategoryInput {
   name: string;
   slug: string;
   description?: string | null;
-  topics?: CreateTopicInput[];
 }
 
 export interface UpdateCategoryInput {
@@ -163,18 +148,11 @@ export interface UpdateCategoryInput {
   description?: string | null;
 }
 
-export interface CreateTopicInput {
+export interface UpsertTopicInput {
   slug: string;
   title: string;
   description?: string | null;
   categoryId: string;
-}
-
-export interface UpdateTopicInput {
-  slug?: string;
-  title?: string;
-  description?: string | null;
-  categoryId?: string;
 }
 
 // ============================================================================
@@ -199,9 +177,9 @@ export class CategoryService {
 
   static async getCategoriesWithTopics(): Promise<Category[]> {
     try {
-      // Fallback to basic categories query until backend supports description and topics fields
+      // Use the full query with description and topics fields - backend now supports this
       const response = await this.client.request<{ categories: Category[] }>(
-        Q_CATEGORIES
+        Q_CATEGORIES_WITH_TOPICS
       );
       return response.categories;
     } catch (error) {
@@ -211,41 +189,97 @@ export class CategoryService {
   }
 
   static async createCategory(input: CreateCategoryInput): Promise<Category> {
-    // TODO: Backend doesn't support createCategory mutation yet
-    // This is a temporary implementation that throws a user-friendly error
-    throw new Error('Category creation is not yet supported by the backend. Please contact your development team to implement the createCategory GraphQL mutation.');
+    try {
+      const response = await this.client.request<{ createCategory: Category }>(
+        M_CREATE_CATEGORY,
+        { input }
+      );
+      return response.createCategory;
+    } catch (error: any) {
+      console.error('Error creating category:', error);
+      // Extract GraphQL error message if available
+      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || 'Failed to create category';
+      throw new Error(errorMessage);
+    }
   }
 
   static async updateCategory(id: string, input: UpdateCategoryInput): Promise<Category> {
-    // TODO: Backend doesn't support updateCategory mutation yet
-    // This is a temporary implementation that throws a user-friendly error
-    throw new Error('Category editing is not yet supported by the backend. Please contact your development team to implement the updateCategory GraphQL mutation.');
+    try {
+      const response = await this.client.request<{ updateCategory: Category }>(
+        M_UPDATE_CATEGORY,
+        { id, input }
+      );
+      return response.updateCategory;
+    } catch (error: any) {
+      console.error('Error updating category:', error);
+      // Extract GraphQL error message if available
+      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || 'Failed to update category';
+      throw new Error(errorMessage);
+    }
   }
 
   static async deleteCategory(id: string): Promise<void> {
-    // TODO: Backend doesn't support deleteCategory mutation yet
-    // This is a temporary implementation that throws a user-friendly error
-    throw new Error('Category deletion is not yet supported by the backend. Please contact your development team to implement the deleteCategory GraphQL mutation.');
+    try {
+      await this.client.request<{ deleteCategory: boolean }>(
+        M_DELETE_CATEGORY,
+        { id }
+      );
+    } catch (error: any) {
+      console.error('Error deleting category:', error);
+      // Extract GraphQL error message if available
+      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || 'Failed to delete category';
+      throw new Error(errorMessage);
+    }
   }
 
-  // Topic Methods - TODO: Backend doesn't support topic operations yet
+  // Topic Methods
   static async getTopicsByCategory(categoryId: string): Promise<Topic[]> {
-    // TODO: Backend doesn't support topicsByCategory query yet
-    throw new Error('Topic queries are not yet supported by the backend. Please contact your development team to implement topic-related GraphQL operations.');
+    try {
+      const response = await this.client.request<{ topicsByCategory: Topic[] }>(
+        Q_TOPICS_BY_CATEGORY,
+        { categoryId }
+      );
+      return response.topicsByCategory;
+    } catch (error: any) {
+      console.error('Error fetching topics by category:', error);
+      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || 'Failed to fetch topics';
+      throw new Error(errorMessage);
+    }
   }
 
-  static async createTopic(input: CreateTopicInput): Promise<Topic> {
-    // TODO: Backend doesn't support createTopic mutation yet
-    throw new Error('Topic creation is not yet supported by the backend. Please contact your development team to implement the createTopic GraphQL mutation.');
+  static async upsertTopic(input: UpsertTopicInput): Promise<Topic> {
+    try {
+      const response = await this.client.request<{ upsertTopic: Topic }>(
+        M_UPSERT_TOPIC,
+        { input }
+      );
+      return response.upsertTopic;
+    } catch (error: any) {
+      console.error('Error upserting topic:', error);
+      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || 'Failed to save topic';
+      throw new Error(errorMessage);
+    }
   }
 
-  static async updateTopic(id: string, input: UpdateTopicInput): Promise<Topic> {
-    // TODO: Backend doesn't support updateTopic mutation yet
-    throw new Error('Topic editing is not yet supported by the backend. Please contact your development team to implement the updateTopic GraphQL mutation.');
+  // Convenience methods for create/update
+  static async createTopic(input: UpsertTopicInput): Promise<Topic> {
+    return this.upsertTopic(input);
+  }
+
+  static async updateTopic(input: UpsertTopicInput): Promise<Topic> {
+    return this.upsertTopic(input);
   }
 
   static async deleteTopic(id: string): Promise<void> {
-    // TODO: Backend doesn't support deleteTopic mutation yet
-    throw new Error('Topic deletion is not yet supported by the backend. Please contact your development team to implement the deleteTopic GraphQL mutation.');
+    try {
+      await this.client.request<{ deleteTopic: boolean }>(
+        M_DELETE_TOPIC,
+        { id }
+      );
+    } catch (error: any) {
+      console.error('Error deleting topic:', error);
+      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || 'Failed to delete topic';
+      throw new Error(errorMessage);
+    }
   }
 }
