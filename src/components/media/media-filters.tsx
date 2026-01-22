@@ -77,14 +77,14 @@ export function MediaFilters({
 
         {/* Type Filter */}
         <Select
-          value={filters.type || ''}
-          onValueChange={(value) => updateFilter('type', value || undefined)}
+          value={filters.type || 'all'}
+          onValueChange={(value) => updateFilter('type', value === 'all' ? undefined : value)}
         >
           <SelectTrigger className="w-full lg:w-48">
             <SelectValue placeholder="All types" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All types</SelectItem>
+            <SelectItem value="all">All types</SelectItem>
             {mediaTypes.map((type) => (
               <SelectItem key={type.value} value={type.value}>
                 {type.label}
@@ -96,14 +96,14 @@ export function MediaFilters({
         {/* Folder Filter */}
         {folders.length > 0 && (
           <Select
-            value={filters.folder || ''}
-            onValueChange={(value) => updateFilter('folder', value || undefined)}
+            value={filters.folder || 'all'}
+            onValueChange={(value) => updateFilter('folder', value === 'all' ? undefined : value)}
           >
             <SelectTrigger className="w-full lg:w-48">
               <SelectValue placeholder="All folders" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All folders</SelectItem>
+              <SelectItem value="all">All folders</SelectItem>
               {folders.map((folder) => (
                 <SelectItem key={folder} value={folder}>
                   {folder}
