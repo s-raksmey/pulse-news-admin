@@ -22,7 +22,7 @@ interface MediaGridProps {
 const getFileIcon = (type: string, className?: string) => {
   const iconClass = cn('w-6 h-6', className);
   
-  if (type.startsWith('image/')) return <Image className={iconClass} width={24} height={24} alt="" />;
+  if (type.startsWith('image/')) return <Image className={iconClass} width={24} height={24} alt="" src={''} />;
   if (type.startsWith('video/')) return <Video className={iconClass} />;
   if (type.startsWith('audio/')) return <Music className={iconClass} />;
   if (type === 'application/pdf' || type.startsWith('text/')) return <FileText className={iconClass} />;
@@ -97,7 +97,7 @@ export function MediaGrid({
   }
 
   return (
-    <div className={cn('grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4', className)}>
+    <><div className={cn('grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4', className)}>
       {files.map((file) => {
         const isSelected = selectedFiles.includes(file.id);
         const isImage = file.type === 'image';
@@ -120,14 +120,13 @@ export function MediaGrid({
                   alt={file.alt || file.originalName}
                   fill
                   className="object-cover"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                />
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
               ) : (
                 <div className="text-slate-400">
                   {getFileIcon(file.mimeType, 'w-12 h-12')}
                 </div>
               )}
-              
+
               {/* Overlay Actions */}
               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
                 <div className="flex space-x-2">
@@ -137,7 +136,7 @@ export function MediaGrid({
                     onClick={(e) => {
                       e.stopPropagation();
                       window.open(file.url, '_blank');
-                    }}
+                    } }
                   >
                     <Eye className="w-4 h-4" />
                   </Button>
@@ -147,7 +146,7 @@ export function MediaGrid({
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDownload(file);
-                    }}
+                    } }
                   >
                     <Download className="w-4 h-4" />
                   </Button>
@@ -158,7 +157,7 @@ export function MediaGrid({
                       onClick={(e) => {
                         e.stopPropagation();
                         onFileEdit(file);
-                      }}
+                      } }
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
@@ -170,7 +169,7 @@ export function MediaGrid({
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDeleteClick(file);
-                      }}
+                      } }
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -189,7 +188,7 @@ export function MediaGrid({
                   {file.type}
                 </Badge>
               </div>
-              
+
               <div className="space-y-1">
                 <p className="text-xs text-slate-500">
                   {formatFileSize(file.size)}
@@ -197,7 +196,7 @@ export function MediaGrid({
                     <span className="ml-2">{file.width} × {file.height}</span>
                   )}
                 </p>
-                
+
                 {file.tags && file.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {file.tags.slice(0, 2).map((tag) => (
@@ -212,7 +211,7 @@ export function MediaGrid({
                     )}
                   </div>
                 )}
-                
+
                 <p className="text-xs text-slate-400">
                   {new Date(file.uploadedAt).toLocaleDateString()}
                 </p>
@@ -223,8 +222,8 @@ export function MediaGrid({
             {selectable && (
               <div className={cn(
                 'absolute top-2 right-2 w-5 h-5 rounded-full border-2 transition-all',
-                isSelected 
-                  ? 'bg-blue-500 border-blue-500' 
+                isSelected
+                  ? 'bg-blue-500 border-blue-500'
                   : 'bg-white border-slate-300 group-hover:border-slate-400'
               )}>
                 {isSelected && (
@@ -237,17 +236,14 @@ export function MediaGrid({
           </div>
         );
       })}
-    </div>
-
-    <ConfirmationDialog
-      open={deleteDialog.open}
-      onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
-      title="Delete File?"
-      description="Are you sure you want to delete this file? This action cannot be undone."
-      confirmText="Delete"
-      cancelText="Cancel"
-      variant="destructive"
-      onConfirm={handleDeleteConfirm}
-    />
+    </div><ConfirmationDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
+        title="Delete File?"
+        description="Are you sure you want to delete this file? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={handleDeleteConfirm} /></>
   );
 }
