@@ -90,8 +90,8 @@ export function Header({ onMobileNavOpen }: HeaderProps) {
           <span className="font-semibold text-slate-800">Pulse News</span>
         </div>
 
-        {/* Search */}
-        <div className="flex-1 max-w-md">
+        {/* Enhanced Search */}
+        <div className="flex-1 max-w-lg">
           <form 
             onSubmit={(e) => {
               e.preventDefault();
@@ -109,8 +109,8 @@ export function Header({ onMobileNavOpen }: HeaderProps) {
               <input
                 name="search"
                 type="search"
-                placeholder="Search articles, users, categories..."
-                className={`w-full rounded-lg border bg-white pl-10 pr-4 py-2.5 text-sm placeholder:text-slate-500 transition-all duration-200 ${
+                placeholder="Search articles, categories, users... (Ctrl+K)"
+                className={`w-full rounded-lg border bg-white pl-10 pr-12 py-2.5 text-sm placeholder:text-slate-500 transition-all duration-200 ${
                   searchFocused 
                     ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-sm' 
                     : 'border-slate-200 hover:border-slate-300'
@@ -118,6 +118,13 @@ export function Header({ onMobileNavOpen }: HeaderProps) {
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
               />
+              {!searchFocused && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-slate-100 px-1.5 font-mono text-xs text-slate-600">
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
+                </div>
+              )}
             </div>
           </form>
         </div>
