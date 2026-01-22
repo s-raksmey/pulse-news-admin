@@ -43,7 +43,6 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
   });
 
   const [topics, setTopics] = useState<TopicFormData[]>(
-    // Handle case where category.topics might not exist yet (backend compatibility)
     category?.topics?.map(topic => ({
       title: topic.title,
       slug: topic.slug,
@@ -315,3 +314,4 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
     </form>
   );
 }
+
