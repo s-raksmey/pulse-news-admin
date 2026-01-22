@@ -71,6 +71,11 @@ export default function EditArticlePage() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
+  // Topic management
+  const [topics, setTopics] = useState<any[]>([]);
+  const [topicsLoading, setTopicsLoading] = useState(false);
+  const [topicsError, setTopicsError] = useState<string | null>(null);
+
   // Confirmation dialog state
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
@@ -80,8 +85,7 @@ export default function EditArticlePage() {
   });
 
   // Get topics for selected category
-  const selectedCategory = categories.find(cat => cat.slug === categorySlug);
-  const topicOptions = selectedCategory?.topics || [];
+  const topicOptions = topics;
 
   /* -------------------------
      Load categories
@@ -101,6 +105,24 @@ export default function EditArticlePage() {
       setCategoriesError('Failed to load categories. Please try again.');
     } finally {
       setCategoriesLoading(false);
+    }
+  };
+
+  const loadTopicsForCategory = async (categorySlug: string) => {
+    try {
+      setTopicsLoading(true);
+      setTopicsError(null);
+      
+      const topicsData = await CategoryService.getTopicsByCategory(categorySlug);
+      setTopics(topicsData);
+      
+      console.log(`📋 Loaded ${topicsData.length} topics for category: ${categorySlug}`);
+    } catch (err) {
+      console.error('Error loading topics:', err);
+      setTopicsError('Failed to load topics for this category.');
+      setTopics([]);
+    } finally {
+      setTopicsLoading(false);
     }
   };
 
@@ -149,6 +171,15 @@ export default function EditArticlePage() {
       active = false;
     };
   }, [client, id]);
+
+  // Load topics when category changes
+  useEffect(() => {
+    if (categorySlug && !loading) {
+      loadTopicsForCategory(categorySlug);
+    } else {
+      setTopics([]);
+    }
+  }, [categorySlug, loading]);
 
   /* -------------------------
      Actions
@@ -354,14 +385,24 @@ export default function EditArticlePage() {
               className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm disabled:bg-slate-50 disabled:text-slate-500"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              disabled={!categorySlug || topicOptions.length === 0}
+              disabled={!categorySlug || topicsLoading}
             >
-              <option value="">— No topic —</option>
-              {topicOptions.map((topicItem) => (
-                <option key={topicItem.slug} value={topicItem.slug}>
-                  {topicItem.title}
-                </option>
-              ))}
+              {!categorySlug ? (
+                <option value="">— Select a category first —</option>
+              ) : topicsLoading ? (
+                <option value="">Loading topics...</option>
+              ) : topicOptions.length === 0 ? (
+                <option value="">— No topics available —</option>
+              ) : (
+                <>
+                  <option value="">— No topic —</option>
+                  {topicOptions.map((topicItem) => (
+                    <option key={topicItem.slug} value={topicItem.slug}>
+                      {topicItem.title}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
           </div>
         </div>
