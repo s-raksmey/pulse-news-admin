@@ -107,11 +107,6 @@ export function useArticles() {
             name
             slug
           }
-          author {
-            id
-            name
-            email
-          }
         }
       }
     `;
@@ -148,11 +143,6 @@ export function useArticles() {
             name
             slug
           }
-          author {
-            id
-            name
-            email
-          }
         }
       }
     `;
@@ -188,11 +178,6 @@ export function useArticles() {
             id
             name
             slug
-          }
-          author {
-            id
-            name
-            email
           }
         }
       }
@@ -241,11 +226,6 @@ export function useArticleMutations() {
             id
             name
             slug
-          }
-          author {
-            id
-            name
-            email
           }
         }
       }
