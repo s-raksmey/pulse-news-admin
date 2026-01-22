@@ -297,18 +297,17 @@ export function useSearch() {
   const { query, loading, error } = useGraphQL();
 
   const searchArticles = useCallback(async (searchInput: {
-    query?: string;
-    filters?: {
-      status?: string;
-      categorySlug?: string;
-      topic?: string;
-      dateFrom?: string;
-      dateTo?: string;
-    };
-    pagination?: {
-      take?: number;
-      skip?: number;
-    };
+    query: string;
+    categorySlug?: string;
+    tags?: string[];
+    authorName?: string;
+    status?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    sortBy?: string;
+    sortOrder?: string;
+    take?: number;
+    skip?: number;
   }) => {
     const SEARCH_ARTICLES_QUERY = `
       query SearchArticles($input: SearchInput!) {
