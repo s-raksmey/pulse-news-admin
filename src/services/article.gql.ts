@@ -37,15 +37,17 @@ export const Q_ARTICLES = /* GraphQL */ `
       excerpt
       status
       topic
-      publishedAt
-      viewCount
+      coverImageUrl
+      authorName
       isFeatured
       isEditorsPick
       isBreaking
-      coverImageUrl
-      ogImageUrl
-      contentJson 
+      viewCount
+      publishedAt
+      createdAt
+      updatedAt
       category {
+        id
         name
         slug
       }
