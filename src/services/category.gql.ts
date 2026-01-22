@@ -11,6 +11,7 @@ export const Q_CATEGORIES = gql`
       id
       name
       slug
+      description
       createdAt
       updatedAt
     }
@@ -199,9 +200,8 @@ export class CategoryService {
 
   static async getCategoriesWithTopics(): Promise<Category[]> {
     try {
-      // Fallback to basic categories query until backend supports description and topics fields
       const response = await this.client.request<{ categories: Category[] }>(
-        Q_CATEGORIES
+        Q_CATEGORIES_WITH_TOPICS
       );
       return response.categories;
     } catch (error) {

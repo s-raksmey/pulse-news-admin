@@ -54,12 +54,12 @@ export default function CategoriesPage() {
           description: data.description,
         });
       } else {
-        // Create new category (without topics for now - backend compatibility)
+        // Create new category
         await CategoryService.createCategory({
           name: data.name,
           slug: data.slug,
           description: data.description,
-          // topics: data.topics, // TODO: Enable when backend supports topics
+          topics: data.topics,
         });
       }
 
