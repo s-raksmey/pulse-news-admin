@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, UserCheck, UserX, Shield, Edit, PenTool } from 'lucide-react';
+import { Users, UserCheck, UserX, Shield, Edit, PenTool, RefreshCw, AlertCircle } from 'lucide-react';
 import { UserService } from '../../services/user.gql';
 import type { UserStats as UserStatsType } from '../../types/user';
 
@@ -10,22 +10,51 @@ export default function UserStats() {
   const [stats, setStats] = useState<UserStatsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Check if user stats feature is enabled
+  const statsEnabled = process.env.NEXT_PUBLIC_ENABLE_USER_STATS !== 'false';
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await UserService.getUserStats();
+      setStats(data);
+      setRetryCount(0);
+    } catch (err) {
+      console.warn('getUserStats failed, attempting fallback:', err);
+      
+      // Try fallback method
+      try {
+        const fallbackStats = await UserService.getFallbackUserStats();
+        if (fallbackStats) {
+          setStats(fallbackStats);
+          setRetryCount(0);
+          return;
+        }
+      } catch (fallbackErr) {
+        console.warn('Fallback stats also failed:', fallbackErr);
+      }
+      
+      setError(err instanceof Error ? err.message : 'Failed to load statistics');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        const data = await UserService.getUserStats();
-        setStats(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load statistics');
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (statsEnabled) {
+      fetchStats();
+    } else {
+      setLoading(false);
+    }
+  }, [statsEnabled]);
 
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
     fetchStats();
-  }, []);
+  };
 
   if (loading) {
     return (
@@ -42,8 +71,49 @@ export default function UserStats() {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-600 text-sm">Error loading statistics: {error}</p>
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+        <div className="flex items-start space-x-3">
+          <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <h3 className="text-sm font-medium text-amber-800 mb-1">
+              User Statistics Temporarily Unavailable
+            </h3>
+            <p className="text-sm text-amber-700 mb-3">
+              We're having trouble loading user statistics right now. This doesn't affect your ability to manage users - you can still view, edit, and manage user accounts normally.
+            </p>
+            <button
+              onClick={handleRetry}
+              disabled={loading}
+              className="inline-flex items-center space-x-2 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>{loading ? 'Retrying...' : 'Try Again'}</span>
+            </button>
+            {retryCount > 0 && (
+              <p className="text-xs text-amber-600 mt-2">
+                Retry attempt: {retryCount}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!statsEnabled) {
+    return (
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <div className="flex items-center space-x-3">
+          <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-blue-800 mb-1">
+              User Statistics Disabled
+            </h3>
+            <p className="text-sm text-blue-700">
+              User statistics have been disabled in the configuration. All user management features remain fully functional.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -150,4 +220,3 @@ export default function UserStats() {
     </div>
   );
 }
-

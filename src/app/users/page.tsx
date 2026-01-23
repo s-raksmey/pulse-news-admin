@@ -1,10 +1,11 @@
 // src/app/users/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import UserStats from '../../components/user-management/UserStats';
 import UserFilters from '../../components/user-management/UserFilters';
 import UserList from '../../components/user-management/UserList';
+import { UserService } from '../../services/user.gql';
 import type { UserFilters as UserFiltersType } from '../../types/user';
 
 export default function UsersPage() {
@@ -15,6 +16,7 @@ export default function UsersPage() {
     sortBy: 'createdAt',
     sortOrder: 'desc',
   });
+  const [statsAvailable, setStatsAvailable] = useState<boolean | null>(null);
 
   const handleFiltersChange = (newFilters: UserFiltersType) => {
     setFilters(newFilters);
@@ -29,6 +31,16 @@ export default function UsersPage() {
       sortOrder: 'desc',
     });
   };
+
+  useEffect(() => {
+    // Check if getUserStats is available on component mount
+    const checkStatsAvailability = async () => {
+      const available = await UserService.checkGetUserStatsAvailability();
+      setStatsAvailable(available);
+    };
+    
+    checkStatsAvailability();
+  }, []);
 
   return (
     <div className="space-y-6">
