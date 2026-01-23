@@ -3,7 +3,12 @@
 ## Missing getUserStats Resolver
 
 ### Issue Description
-The frontend is calling a `getUserStats` GraphQL query that is not implemented on the backend server. This results in an "Unexpected error" with "INTERNAL_SERVER_ERROR" status.
+The frontend is calling a `getUserStats` GraphQL query that has issues on the backend server. This manifests in two ways:
+
+1. **"Unexpected error" with "INTERNAL_SERVER_ERROR"** - The resolver is not implemented
+2. **"Cannot read properties of null"** - The resolver exists but returns `null` instead of proper data
+
+Both cases indicate the backend `getUserStats` resolver needs to be properly implemented.
 
 ### Required Implementation
 
@@ -61,6 +66,22 @@ The resolver should handle:
 - Database connection errors
 - Permission checks (ensure user has admin privileges)
 - Return appropriate GraphQL errors for unauthorized access
+- **CRITICAL**: Never return `null` - always return a valid UserStats object with zero values if no data is available
+
+#### Common Implementation Issues
+1. **Returning null**: The resolver must never return `null`. If there are no users, return:
+   ```javascript
+   {
+     totalUsers: 0,
+     activeUsers: 0,
+     inactiveUsers: 0,
+     usersByRole: { admin: 0, editor: 0, author: 0 },
+     recentRegistrations: 0
+   }
+   ```
+
+2. **Missing database queries**: Ensure all required database queries are implemented
+3. **Async/await issues**: Make sure all database operations are properly awaited
 
 #### Performance Considerations
 - Consider caching the results for a few minutes since user statistics don't change frequently
@@ -93,4 +114,3 @@ query GetUserStats {
 
 ### Priority
 **High** - This affects the user management dashboard and overall admin experience.
-
