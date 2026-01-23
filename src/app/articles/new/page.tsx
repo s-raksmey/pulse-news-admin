@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useMemo, useRef, useState } from "react";
 
-import { getGqlClient } from "@/services/graphql-client";
+import { getAuthenticatedGqlClient } from "@/services/graphql-client";
 import { M_UPSERT_ARTICLE } from "@/services/article.gql";
 
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,7 @@ function titleCase(slug: string) {
    Page
 ========================= */
 export default function NewArticlePage() {
-  const client = useMemo(() => getGqlClient(), []);
+  const client = useMemo(() => getAuthenticatedGqlClient(), []);
   const editorRef = useRef<NewsEditorRef>(null);
 
   const [title, setTitle] = useState("");
