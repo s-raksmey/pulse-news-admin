@@ -37,13 +37,21 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    // Check user authorization with robust role checking
+    // Debug logging
+    console.log('Users Page Debug - isLoading:', isLoading);
+    console.log('Users Page Debug - user:', user);
+    console.log('Users Page Debug - user.role:', user?.role);
+    console.log('Users Page Debug - user.role !== "ADMIN":', user?.role !== 'ADMIN');
+    
+    // Check user authorization
     if (!isLoading && user) {
-      const userRole = user.role?.toString().toUpperCase();
-      if (userRole !== 'ADMIN') {
-        // Redirect non-admin users to dashboard immediately
-        router.replace('/');
+      if (user.role !== 'ADMIN') {
+        console.log('Users Page Debug - Redirecting non-admin user to dashboard');
+        // Redirect non-admin users to dashboard
+        router.push('/');
         return;
+      } else {
+        console.log('Users Page Debug - User is ADMIN, allowing access');
       }
     }
 
