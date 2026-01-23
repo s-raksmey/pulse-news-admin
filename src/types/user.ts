@@ -61,6 +61,15 @@ export interface ActivityLog {
 }
 
 // Input Types
+export interface CreateUserInput {
+  name: string;
+  email: string;
+  password: string;
+  role?: UserRole;
+  isActive?: boolean;
+  sendWelcomeEmail?: boolean;
+}
+
 export interface ListUsersInput {
   take?: number;
   skip?: number;

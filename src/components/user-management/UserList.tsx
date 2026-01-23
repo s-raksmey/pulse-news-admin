@@ -2,10 +2,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { UserService } from '../../services/user.gql';
 import UserTableRow from './UserTableRow';
 import BulkActionBar from './BulkActionBar';
+import UserCreateModal from './UserCreateModal';
 import type { User, UserFilters, ListUsersInput } from '../../types/user';
 
 interface UserListProps {
@@ -20,6 +21,7 @@ export default function UserList({ filters }: UserListProps) {
   const [hasMore, setHasMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
   const pageSize = 10;
 
@@ -94,6 +96,12 @@ export default function UserList({ filters }: UserListProps) {
     fetchUsers(currentPage);
   };
 
+  const handleUserCreated = () => {
+    // Refresh the user list and close modal
+    fetchUsers(currentPage);
+    setIsCreateModalOpen(false);
+  };
+
   const totalPages = Math.ceil(totalCount / pageSize);
   const isAllSelected = users.length > 0 && selectedUserIds.length === users.length;
   const isPartiallySelected = selectedUserIds.length > 0 && selectedUserIds.length < users.length;
@@ -127,6 +135,18 @@ export default function UserList({ filters }: UserListProps) {
 
   return (
     <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">Users</h2>
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Create User
+        </button>
+      </div>
+
       {/* Bulk Action Bar */}
       <BulkActionBar
         selectedUserIds={selectedUserIds}
@@ -286,7 +306,13 @@ export default function UserList({ filters }: UserListProps) {
           <span className="text-slate-600">Updating...</span>
         </div>
       )}
+
+      {/* Create User Modal */}
+      <UserCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onUserCreated={handleUserCreated}
+      />
     </div>
   );
 }
-

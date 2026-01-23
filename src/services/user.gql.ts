@@ -8,6 +8,7 @@ import type {
   UserManagementResult,
   PasswordResetResult,
   ActivityLog,
+  CreateUserInput,
   ListUsersInput,
   UpdateUserProfileInput,
   UpdateUserRoleInput,
@@ -102,6 +103,23 @@ const GET_USER_ACTIVITY_QUERY = gql`
 // ============================================================================
 // GRAPHQL MUTATIONS
 // ============================================================================
+
+const CREATE_USER_MUTATION = gql`
+  mutation CreateUser($input: CreateUserInput!) {
+    createUser(input: $input) {
+      success
+      message
+      user {
+        id
+        email
+        name
+        role
+        isActive
+        createdAt
+      }
+    }
+  }
+`;
 
 const UPDATE_USER_PROFILE_MUTATION = gql`
   mutation UpdateUserProfile($input: UpdateUserProfileInput!) {
@@ -368,6 +386,19 @@ export class UserService {
   }
 
   // Mutation Functions
+  static async createUser(input: CreateUserInput): Promise<UserManagementResult> {
+    try {
+      const response = await this.getClient().request<{ createUser: UserManagementResult }>(
+        CREATE_USER_MUTATION,
+        { input }
+      );
+      return response.createUser;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw new Error('Failed to create user');
+    }
+  }
+
   static async updateUserProfile(input: UpdateUserProfileInput): Promise<UserManagementResult> {
     try {
       const response = await this.getClient().request<{ updateUserProfile: UserManagementResult }>(
