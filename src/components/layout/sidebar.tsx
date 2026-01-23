@@ -28,54 +28,51 @@ interface SidebarProps {
 }
 
 const getNavigation = (counts: { articles: number; users: number; categories: number; media: number }, userRole?: string) => {
-  const items = [
-  {
-    name: "Dashboard",
-    href: "/",
-    icon: LayoutDashboard,
-    badge: null,
-    description: "Overview & stats"
-  },
-  {
-    name: "Articles",
-    href: "/articles",
-    icon: FileText,
-    badge: counts.articles > 0 ? counts.articles.toString() : null,
-    description: "Manage content"
-  },
-  {
-    name: "Categories",
-    href: "/categories",
-    icon: Tags,
-    badge: counts.categories > 0 ? counts.categories.toString() : null,
-    description: "Organize content"
-  },
-  {
-    name: "Media",
-    href: "/media",
-    icon: Image,
-    badge: counts.media > 0 ? counts.media.toString() : null,
-    description: "Files & images"
-  },
-  {
-    name: "Analytics",
-    href: "/analytics",
-    icon: BarChart3,
-    badge: null,
-    description: "Performance data"
-  },
-  {
-    name: "Settings",
-    href: "/settings",
-    icon: Settings,
-    badge: null,
-    description: "System config"
-  },
+  // Base navigation items available to all users
+  const baseItems = [
+    {
+      name: "Dashboard",
+      href: "/",
+      icon: LayoutDashboard,
+      badge: null,
+      description: "Overview & stats"
+    },
+    {
+      name: "Articles",
+      href: "/articles",
+      icon: FileText,
+      badge: counts.articles > 0 ? counts.articles.toString() : null,
+      description: "Manage content"
+    },
+    {
+      name: "Categories",
+      href: "/categories",
+      icon: Tags,
+      badge: counts.categories > 0 ? counts.categories.toString() : null,
+      description: "Organize content"
+    },
+    {
+      name: "Media",
+      href: "/media",
+      icon: Image,
+      badge: counts.media > 0 ? counts.media.toString() : null,
+      description: "Files & images"
+    },
+    {
+      name: "Analytics",
+      href: "/analytics",
+      icon: BarChart3,
+      badge: null,
+      description: "Performance data"
+    }
   ];
 
-  // Only add Users navigation for ADMIN role
-  if (userRole === 'ADMIN') {
-    items.splice(-1, 0, {
+  // Admin-only navigation items
+  const adminItems = [];
+  
+  // Only add Users navigation for ADMIN role (strict comparison)
+  if (userRole && userRole.toString().toUpperCase() === 'ADMIN') {
+    adminItems.push({
       name: "Users",
       href: "/users",
       icon: Users,
@@ -84,14 +81,47 @@ const getNavigation = (counts: { articles: number; users: number; categories: nu
     });
   }
 
-  return items;
+  // Settings item (available to all users)
+  const settingsItem = {
+    name: "Settings",
+    href: "/settings",
+    icon: Settings,
+    badge: null,
+    description: "System config"
+  };
+
+  // Combine all items: base + admin + settings
+  return [...baseItems, ...adminItems, settingsItem];
 };
 
 export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
   const pathname = usePathname();
-  const { user } = useAuth();
-  const { counts, loading } = useCounts(user?.role);
-  const navigation = getNavigation(counts, user?.role);
+  const { user, isLoading } = useAuth();
+  
+  // Ensure we have a stable user role value
+  const userRole = user?.role?.toString().toUpperCase();
+  
+  const { counts, loading } = useCounts(userRole);
+  const navigation = getNavigation(counts, userRole);
+
+  // Don't render navigation until user data is loaded to prevent flashing
+  if (isLoading) {
+    return (
+      <motion.aside
+        initial={false}
+        animate={{ width: collapsed ? 80 : 280 }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        className={cn(
+          "fixed left-0 top-0 z-40 h-screen bg-white border-r border-slate-200 flex flex-col",
+          className
+        )}
+      >
+        <div className="flex items-center justify-center h-16">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+        </div>
+      </motion.aside>
+    );
+  }
 
   return (
     <motion.aside
