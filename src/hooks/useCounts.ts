@@ -19,7 +19,7 @@ interface CountsResult {
   };
 }
 
-export function useCounts(): CountsResult {
+export function useCounts(userRole?: string): CountsResult {
   const [counts, setCounts] = useState<Counts>({
     articles: 0,
     users: 0,
@@ -45,11 +45,13 @@ export function useCounts(): CountsResult {
         let usersCount = 0;
         let userError: string | undefined;
         
-        try {
-          const userStats = await UserService.getUserStats();
-          usersCount = userStats?.totalUsers || 0;
-          setErrors(prev => ({ ...prev, users: undefined })); // Clear any previous errors
-        } catch (error) {
+        // Only fetch user stats if user is ADMIN
+        if (userRole === 'ADMIN') {
+          try {
+            const userStats = await UserService.getUserStats();
+            usersCount = userStats?.totalUsers || 0;
+            setErrors(prev => ({ ...prev, users: undefined })); // Clear any previous errors
+          } catch (error) {
           console.warn('Failed to fetch users count via getUserStats, attempting fallback:', error);
           
           // Check if it's a permission error (multiple ways to detect this)
@@ -93,6 +95,10 @@ export function useCounts(): CountsResult {
               setErrors(prev => ({ ...prev, users: userError }));
             }
           }
+        } else {
+          // For non-admin users, set users count to 0 and clear any errors
+          usersCount = 0;
+          setErrors(prev => ({ ...prev, users: undefined }));
         }
 
         // Fetch categories count using GraphQL
@@ -125,7 +131,7 @@ export function useCounts(): CountsResult {
     };
 
     fetchCounts();
-  }, [getArticles, getCategories]);
+  }, [getArticles, getCategories, userRole]);
 
   return { counts, loading, errors };
 }
