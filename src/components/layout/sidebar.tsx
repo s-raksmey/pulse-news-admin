@@ -100,17 +100,32 @@ const getNavigation = (counts: { articles: number; users: number; categories: nu
 
 export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   
-  // Debug logging
-  console.log('Sidebar Debug - User:', user);
-  console.log('Sidebar Debug - User Role:', user?.role);
-  console.log('Sidebar Debug - User Role Type:', typeof user?.role);
+  // Ensure we have a stable user role value with proper normalization
+  const userRole = user?.role?.toString().toUpperCase();
   
-  const { counts, loading } = useCounts(user?.role);
-  const navigation = getNavigation(counts, user?.role);
-  
-  console.log('Sidebar Debug - Navigation items:', navigation.map(item => item.name));
+  const { counts, loading } = useCounts(userRole);
+  const navigation = getNavigation(counts, userRole);
+
+  // Don't render navigation until user data is loaded to prevent flashing
+  if (isLoading) {
+    return (
+      <motion.aside
+        initial={false}
+        animate={{ width: collapsed ? 80 : 280 }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        className={cn(
+          "fixed left-0 top-0 z-40 h-screen bg-white border-r border-slate-200 flex flex-col",
+          className
+        )}
+      >
+        <div className="flex items-center justify-center h-16">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+        </div>
+      </motion.aside>
+    );
+  }
 
   return (
     <motion.aside
