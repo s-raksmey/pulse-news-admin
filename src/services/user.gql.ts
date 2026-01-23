@@ -249,6 +249,18 @@ export class UserService {
       return response.getUserStats;
     } catch (error) {
       console.error('Error fetching user stats:', error);
+      
+      // Check if this is a GraphQL resolver not implemented error
+      if (error && typeof error === 'object' && 'response' in error) {
+        const gqlError = error as any;
+        if (gqlError.response?.errors?.some((e: any) => 
+          e.extensions?.code === 'INTERNAL_SERVER_ERROR' || 
+          e.message?.includes('Unexpected error')
+        )) {
+          throw new Error('User statistics feature is temporarily unavailable. The backend service is being updated.');
+        }
+      }
+      
       throw new Error('Failed to fetch user statistics');
     }
   }
@@ -387,6 +399,61 @@ export class UserService {
   // Utility Functions
   static refreshClient(): void {
     this.client = getAuthenticatedGqlClient();
+  }
+
+  static async checkGetUserStatsAvailability(): Promise<boolean> {
+    try {
+      await this.getUserStats();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  static async getFallbackUserStats(): Promise<UserStats | null> {
+    try {
+      // Fetch all users to calculate basic statistics
+      const allUsersResult = await this.listUsers({ take: 1000, skip: 0 });
+      const users = allUsersResult.users;
+
+      if (!users || users.length === 0) {
+        return {
+          totalUsers: 0,
+          activeUsers: 0,
+          inactiveUsers: 0,
+          usersByRole: { admin: 0, editor: 0, author: 0 },
+          recentRegistrations: 0
+        };
+      }
+
+      const totalUsers = users.length;
+      const activeUsers = users.filter(user => user.isActive).length;
+      const inactiveUsers = totalUsers - activeUsers;
+
+      const usersByRole = {
+        admin: users.filter(user => user.role === 'ADMIN').length,
+        editor: users.filter(user => user.role === 'EDITOR').length,
+        author: users.filter(user => user.role === 'AUTHOR').length,
+      };
+
+      // Calculate recent registrations (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recentRegistrations = users.filter(user => 
+        new Date(user.createdAt) > thirtyDaysAgo
+      ).length;
+
+      return {
+        totalUsers,
+        activeUsers,
+        inactiveUsers,
+        usersByRole,
+        recentRegistrations
+      };
+    } catch (error) {
+      console.error('Failed to generate fallback user stats:', error);
+      return null;
+    }
   }
 
   static getRoleDisplayName(role: string): string {

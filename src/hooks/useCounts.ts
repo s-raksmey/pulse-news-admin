@@ -38,8 +38,16 @@ export function useCounts() {
           const userStats = await UserService.getUserStats();
           usersCount = userStats?.totalUsers || 0;
         } catch (userError) {
-          console.warn('Failed to fetch users count:', userError);
-          // Keep default value of 0
+          console.warn('Failed to fetch users count via getUserStats, attempting fallback:', userError);
+          
+          // Fallback: Try to get a rough count from listUsers query
+          try {
+            const usersResult = await UserService.listUsers({ take: 1000, skip: 0 });
+            usersCount = usersResult?.totalCount || 0;
+          } catch (fallbackError) {
+            console.warn('Fallback users count also failed:', fallbackError);
+            // Keep default value of 0
+          }
         }
 
         // Fetch categories count using GraphQL
