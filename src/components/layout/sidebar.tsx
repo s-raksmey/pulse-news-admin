@@ -28,49 +28,43 @@ interface SidebarProps {
 }
 
 const getNavigation = (counts: { articles: number; users: number; categories: number; media: number }, userRole?: string) => {
-  const items = [
-  {
-    name: "Dashboard",
-    href: "/",
-    icon: LayoutDashboard,
-    badge: null,
-    description: "Overview & stats"
-  },
-  {
-    name: "Articles",
-    href: "/articles",
-    icon: FileText,
-    badge: counts.articles > 0 ? counts.articles.toString() : null,
-    description: "Manage content"
-  },
-  {
-    name: "Categories",
-    href: "/categories",
-    icon: Tags,
-    badge: counts.categories > 0 ? counts.categories.toString() : null,
-    description: "Organize content"
-  },
-  {
-    name: "Media",
-    href: "/media",
-    icon: Image,
-    badge: counts.media > 0 ? counts.media.toString() : null,
-    description: "Files & images"
-  },
-  {
-    name: "Analytics",
-    href: "/analytics",
-    icon: BarChart3,
-    badge: null,
-    description: "Performance data"
-  },
-  {
-    name: "Settings",
-    href: "/settings",
-    icon: Settings,
-    badge: null,
-    description: "System config"
-  },
+  // Base navigation items available to all users
+  const baseItems = [
+    {
+      name: "Dashboard",
+      href: "/",
+      icon: LayoutDashboard,
+      badge: null,
+      description: "Overview & stats"
+    },
+    {
+      name: "Articles",
+      href: "/articles",
+      icon: FileText,
+      badge: counts.articles > 0 ? counts.articles.toString() : null,
+      description: "Manage content"
+    },
+    {
+      name: "Categories",
+      href: "/categories",
+      icon: Tags,
+      badge: counts.categories > 0 ? counts.categories.toString() : null,
+      description: "Organize content"
+    },
+    {
+      name: "Media",
+      href: "/media",
+      icon: Image,
+      badge: counts.media > 0 ? counts.media.toString() : null,
+      description: "Files & images"
+    },
+    {
+      name: "Analytics",
+      href: "/analytics",
+      icon: BarChart3,
+      badge: null,
+      description: "Performance data"
+    }
   ];
 
   // Only add Users navigation for ADMIN role
@@ -91,7 +85,17 @@ const getNavigation = (counts: { articles: number; users: number; categories: nu
     console.log('getNavigation Debug - NOT adding Users navigation item, role is:', userRole);
   }
 
-  return items;
+  // Settings item (available to all users)
+  const settingsItem = {
+    name: "Settings",
+    href: "/settings",
+    icon: Settings,
+    badge: null,
+    description: "System config"
+  };
+
+  // Combine all items: base + admin + settings
+  return [...baseItems, ...adminItems, settingsItem];
 };
 
 export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {

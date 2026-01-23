@@ -55,13 +55,19 @@ export default function UsersPage() {
       }
     }
 
-    // Check if getUserStats is available on component mount
-    const checkStatsAvailability = async () => {
-      const available = await UserService.checkGetUserStatsAvailability();
-      setStatsAvailable(available);
-    };
-    
-    if (user?.role === 'ADMIN') {
+    // Only proceed with admin-specific logic if user is confirmed ADMIN
+    if (!isLoading && user && user.role?.toString().toUpperCase() === 'ADMIN') {
+      // Check if getUserStats is available on component mount
+      const checkStatsAvailability = async () => {
+        try {
+          const available = await UserService.checkGetUserStatsAvailability();
+          setStatsAvailable(available);
+        } catch (error) {
+          console.error('Failed to check stats availability:', error);
+          setStatsAvailable(false);
+        }
+      };
+      
       checkStatsAvailability();
     }
   }, [user, isLoading, router]);
@@ -79,12 +85,13 @@ export default function UsersPage() {
   }
 
   // Show access denied for non-admin users (shouldn't reach here due to redirect, but just in case)
-  if (user && user.role !== 'ADMIN') {
+  if (user && user.role?.toString().toUpperCase() !== 'ADMIN') {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
           <p className="text-gray-600">You don't have permission to access this page.</p>
+          <p className="text-sm text-gray-500 mt-2">Current role: {user.role}</p>
         </div>
       </div>
     );

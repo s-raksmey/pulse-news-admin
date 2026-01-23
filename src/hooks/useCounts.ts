@@ -45,8 +45,8 @@ export function useCounts(userRole?: string): CountsResult {
         let usersCount = 0;
         let userError: string | undefined;
         
-        // Only fetch user stats if user is ADMIN
-        if (userRole === 'ADMIN') {
+        // Only fetch user stats if user is ADMIN (robust role checking)
+        if (userRole && userRole.toString().toUpperCase() === 'ADMIN') {
           try {
             const userStats = await UserService.getUserStats();
             usersCount = userStats?.totalUsers || 0;
