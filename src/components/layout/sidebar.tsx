@@ -74,7 +74,12 @@ const getNavigation = (counts: { articles: number; users: number; categories: nu
   ];
 
   // Only add Users navigation for ADMIN role
+  console.log('getNavigation Debug - userRole:', userRole);
+  console.log('getNavigation Debug - userRole === "ADMIN":', userRole === 'ADMIN');
+  console.log('getNavigation Debug - typeof userRole:', typeof userRole);
+  
   if (userRole === 'ADMIN') {
+    console.log('getNavigation Debug - Adding Users navigation item');
     items.splice(-1, 0, {
       name: "Users",
       href: "/users",
@@ -82,6 +87,8 @@ const getNavigation = (counts: { articles: number; users: number; categories: nu
       badge: counts.users > 0 ? counts.users.toString() : null,
       description: "User management"
     });
+  } else {
+    console.log('getNavigation Debug - NOT adding Users navigation item, role is:', userRole);
   }
 
   return items;
@@ -90,8 +97,16 @@ const getNavigation = (counts: { articles: number; users: number; categories: nu
 export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
+  
+  // Debug logging
+  console.log('Sidebar Debug - User:', user);
+  console.log('Sidebar Debug - User Role:', user?.role);
+  console.log('Sidebar Debug - User Role Type:', typeof user?.role);
+  
   const { counts, loading } = useCounts(user?.role);
   const navigation = getNavigation(counts, user?.role);
+  
+  console.log('Sidebar Debug - Navigation items:', navigation.map(item => item.name));
 
   return (
     <motion.aside
