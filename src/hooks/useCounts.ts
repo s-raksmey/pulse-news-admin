@@ -52,8 +52,15 @@ export function useCounts(): CountsResult {
         } catch (error) {
           console.warn('Failed to fetch users count via getUserStats, attempting fallback:', error);
           
-          // Check if it's a permission error
-          if (error instanceof Error && error.message.includes('Admin role required')) {
+          // Check if it's a permission error (multiple ways to detect this)
+          const isPermissionError = error instanceof Error && (
+            error.message.includes('Admin role required') ||
+            error.message.includes('permission') ||
+            error.message.includes('AuthorizationError') ||
+            error.message.includes('returned null') // This often indicates auth failure
+          );
+          
+          if (isPermissionError) {
             // Try basic stats fallback (requires only authentication)
             try {
               const basicStats = await UserService.getBasicStats();

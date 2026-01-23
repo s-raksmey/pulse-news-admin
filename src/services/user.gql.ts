@@ -288,12 +288,25 @@ export class UserService {
     } catch (error) {
       console.error('🔍 Frontend Debug - Error fetching user stats:', error);
       
-      // Check for GraphQL authorization errors
+      // First check for GraphQL authorization errors (most common case for non-admin users)
       if (error && typeof error === 'object' && 'response' in error) {
         const graphqlError = error as any;
-        if (graphqlError.response?.errors?.some((e: any) => e.message?.includes('Required role'))) {
+        if (graphqlError.response?.errors?.some((e: any) => 
+          e.message?.includes('Required role') || 
+          e.message?.includes('AuthorizationError') ||
+          e.extensions?.code === 'FORBIDDEN'
+        )) {
           throw new Error('You do not have permission to access user statistics. Admin role required.');
         }
+      }
+      
+      // Check if the error message indicates authorization failure
+      if (error instanceof Error && (
+        error.message.includes('Required role') ||
+        error.message.includes('AuthorizationError') ||
+        error.message.includes('ADMIN')
+      )) {
+        throw new Error('You do not have permission to access user statistics. Admin role required.');
       }
       
       // Check if this is a GraphQL resolver not implemented error
@@ -307,9 +320,11 @@ export class UserService {
         }
       }
       
-      // Handle null response specifically
+      // Handle null response specifically - this might also be due to authorization
       if (error instanceof Error && error.message.includes('returned null')) {
-        throw new Error('User statistics are temporarily unavailable. The backend service needs to be configured.');
+        // If we get null response, it might be due to authorization failure
+        // Let's throw an authorization error to trigger the fallback
+        throw new Error('You do not have permission to access user statistics. Admin role required.');
       }
       
       throw new Error('Failed to fetch user statistics');
