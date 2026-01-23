@@ -28,6 +28,12 @@ export function getAuthenticatedGqlClient(token?: string) {
         if (process.env.NEXT_PUBLIC_DEBUG_GRAPHQL === 'true') {
           console.log('GraphQL Response:', response);
         }
+        
+        // Check for null data responses that might indicate resolver issues
+        if (response && response.data && Object.values(response.data).some(value => value === null)) {
+          console.warn('GraphQL response contains null values:', response.data);
+        }
+        
         return response;
       }
     }
