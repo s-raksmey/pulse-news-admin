@@ -52,47 +52,48 @@ export function useCounts(userRole?: string): CountsResult {
             usersCount = userStats?.totalUsers || 0;
             setErrors(prev => ({ ...prev, users: undefined })); // Clear any previous errors
           } catch (error) {
-          console.warn('Failed to fetch users count via getUserStats, attempting fallback:', error);
-          
-          // Check if it's a permission error (multiple ways to detect this)
-          const isPermissionError = error instanceof Error && (
-            error.message.includes('Admin role required') ||
-            error.message.includes('permission') ||
-            error.message.includes('AuthorizationError') ||
-            error.message.includes('returned null') // This often indicates auth failure
-          );
-          
-          if (isPermissionError) {
-            // Try basic stats fallback (requires only authentication)
-            try {
-              const basicStats = await UserService.getBasicStats();
-              usersCount = basicStats?.totalUsers || 0;
-              userError = 'Admin access required for detailed user statistics';
-              setErrors(prev => ({ ...prev, users: userError }));
-            } catch (basicError) {
-              console.warn('Basic stats fallback also failed:', basicError);
-              
-              // Final fallback: Try to get a rough count from listUsers query
+            console.warn('Failed to fetch users count via getUserStats, attempting fallback:', error);
+            
+            // Check if it's a permission error (multiple ways to detect this)
+            const isPermissionError = error instanceof Error && (
+              error.message.includes('Admin role required') ||
+              error.message.includes('permission') ||
+              error.message.includes('AuthorizationError') ||
+              error.message.includes('returned null') // This often indicates auth failure
+            );
+            
+            if (isPermissionError) {
+              // Try basic stats fallback (requires only authentication)
+              try {
+                const basicStats = await UserService.getBasicStats();
+                usersCount = basicStats?.totalUsers || 0;
+                userError = 'Admin access required for detailed user statistics';
+                setErrors(prev => ({ ...prev, users: userError }));
+              } catch (basicError) {
+                console.warn('Basic stats fallback also failed:', basicError);
+                
+                // Final fallback: Try to get a rough count from listUsers query
+                try {
+                  const usersResult = await UserService.listUsers({ take: 1000, skip: 0 });
+                  usersCount = usersResult?.totalCount || 0;
+                  userError = 'Admin access required for user management';
+                  setErrors(prev => ({ ...prev, users: userError }));
+                } catch (fallbackError) {
+                  console.warn('All user count methods failed:', fallbackError);
+                  userError = 'Unable to fetch user statistics';
+                  setErrors(prev => ({ ...prev, users: userError }));
+                }
+              }
+            } else {
+              // Non-permission error, try other fallbacks
               try {
                 const usersResult = await UserService.listUsers({ take: 1000, skip: 0 });
                 usersCount = usersResult?.totalCount || 0;
-                userError = 'Admin access required for user management';
-                setErrors(prev => ({ ...prev, users: userError }));
               } catch (fallbackError) {
-                console.warn('All user count methods failed:', fallbackError);
+                console.warn('Fallback users count also failed:', fallbackError);
                 userError = 'Unable to fetch user statistics';
                 setErrors(prev => ({ ...prev, users: userError }));
               }
-            }
-          } else {
-            // Non-permission error, try other fallbacks
-            try {
-              const usersResult = await UserService.listUsers({ take: 1000, skip: 0 });
-              usersCount = usersResult?.totalCount || 0;
-            } catch (fallbackError) {
-              console.warn('Fallback users count also failed:', fallbackError);
-              userError = 'Unable to fetch user statistics';
-              setErrors(prev => ({ ...prev, users: userError }));
             }
           }
         } else {
