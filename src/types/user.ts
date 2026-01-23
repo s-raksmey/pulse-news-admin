@@ -1,30 +1,77 @@
 // src/types/user.ts
 
-export type UserRole = 'ADMIN' | 'EDITOR' | 'AUTHOR';
-export type UserStatus = 'ACTIVE' | 'INACTIVE';
-export type UserSortBy = 'name' | 'email' | 'role' | 'createdAt';
-export type SortOrder = 'asc' | 'desc';
-
 export interface User {
   id: string;
   email: string;
   name: string;
   role: UserRole;
   isActive: boolean;
+  avatar?: string;
+  phone?: string;
+  bio?: string;
+  lastLoginAt?: string;
+  emailVerified: boolean;
+  profileData?: any;
   createdAt: string;
+  updatedAt: string;
 }
 
-export interface UserListFilters {
+export type UserRole = 'ADMIN' | 'EDITOR' | 'AUTHOR';
+
+export interface CreateUserInput {
+  name: string;
+  email: string;
+  password: string;
+  role?: UserRole;
+  isActive?: boolean;
+  sendWelcomeEmail?: boolean;
+}
+
+export interface UpdateUserProfileInput {
+  userId: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  phone?: string;
+  bio?: string;
+}
+
+export interface UpdateUserRoleInput {
+  userId: string;
+  role: UserRole;
+}
+
+export interface UpdateUserStatusInput {
+  userId: string;
+  isActive: boolean;
+  reason?: string;
+}
+
+export interface ListUsersInput {
+  take?: number;
+  skip?: number;
   search?: string;
   role?: UserRole;
-  status?: UserStatus;
+  status?: 'ACTIVE' | 'INACTIVE';
+  sortBy?: 'name' | 'email' | 'role' | 'createdAt' | 'updatedAt';
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface UserListResult {
   users: User[];
   totalCount: number;
   hasMore: boolean;
-  filters: UserListFilters;
+  filters: {
+    search?: string;
+    role?: string;
+    status?: string;
+  };
+}
+
+export interface UserManagementResult {
+  success: boolean;
+  message: string;
+  user?: User;
 }
 
 export interface UserStats {
@@ -39,15 +86,12 @@ export interface UserStats {
   recentRegistrations: number;
 }
 
-export interface UserManagementResult {
-  success: boolean;
-  message: string;
-  user?: User;
-}
-
-export interface PasswordResetResult {
-  success: boolean;
-  message: string;
+export interface UserFilters {
+  search: string;
+  role: string;
+  status: string;
+  sortBy: string;
+  sortOrder: string;
 }
 
 export interface ActivityLog {
@@ -56,36 +100,15 @@ export interface ActivityLog {
   activityType: string;
   details?: any;
   performedBy: string;
-  timestamp: string;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: string;
   user?: User;
 }
 
-// Input Types
-export interface ListUsersInput {
-  take?: number;
-  skip?: number;
-  search?: string;
-  role?: UserRole;
-  status?: UserStatus;
-  sortBy?: UserSortBy;
-  sortOrder?: SortOrder;
-}
-
-export interface UpdateUserProfileInput {
-  userId: string;
-  name: string;
-  email: string;
-}
-
-export interface UpdateUserRoleInput {
-  userId: string;
-  role: UserRole;
-}
-
-export interface UpdateUserStatusInput {
-  userId: string;
-  isActive: boolean;
-  reason?: string;
+export interface PasswordResetResult {
+  success: boolean;
+  message: string;
 }
 
 export interface ChangePasswordInput {
@@ -103,28 +126,3 @@ export interface ResetPasswordInput {
   newPassword: string;
 }
 
-// UI State Types
-export interface UserFilters {
-  search: string;
-  role: UserRole | 'ALL';
-  status: UserStatus | 'ALL';
-  sortBy: UserSortBy;
-  sortOrder: SortOrder;
-}
-
-export interface UserTableState {
-  loading: boolean;
-  error: string | null;
-  users: User[];
-  totalCount: number;
-  hasMore: boolean;
-  currentPage: number;
-  pageSize: number;
-  filters: UserFilters;
-}
-
-export interface BulkActionState {
-  selectedUsers: string[];
-  isProcessing: boolean;
-  action: 'role' | 'status' | null;
-}
