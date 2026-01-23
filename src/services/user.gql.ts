@@ -239,10 +239,9 @@ const BULK_UPDATE_USER_STATUS_MUTATION = gql`
 // ============================================================================
 
 export class UserService {
-  private static client = getAuthenticatedGqlClient();
-
   private static getClient() {
-    return this.client;
+    // Always get a fresh authenticated client to ensure we have the latest token
+    return getAuthenticatedGqlClient();
   }
 
   // Query Functions
@@ -519,9 +518,6 @@ export class UserService {
   }
 
   // Utility Functions
-  static refreshClient(): void {
-    this.client = getAuthenticatedGqlClient();
-  }
 
   static async checkGetUserStatsAvailability(): Promise<boolean> {
     try {
