@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useCounts } from "@/hooks/useCounts";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -26,7 +27,8 @@ interface SidebarProps {
   className?: string;
 }
 
-const getNavigation = (counts: { articles: number; users: number; categories: number; media: number }) => [
+const getNavigation = (counts: { articles: number; users: number; categories: number; media: number }, userRole?: string) => {
+  const items = [
   {
     name: "Dashboard",
     href: "/",
@@ -63,25 +65,33 @@ const getNavigation = (counts: { articles: number; users: number; categories: nu
     description: "Performance data"
   },
   {
-    name: "Users",
-    href: "/users",
-    icon: Users,
-    badge: counts.users > 0 ? counts.users.toString() : null,
-    description: "User management"
-  },
-  {
     name: "Settings",
     href: "/settings",
     icon: Settings,
     badge: null,
     description: "System config"
   },
-];
+  ];
+
+  // Only add Users navigation for ADMIN role
+  if (userRole === 'ADMIN') {
+    items.splice(-1, 0, {
+      name: "Users",
+      href: "/users",
+      icon: Users,
+      badge: counts.users > 0 ? counts.users.toString() : null,
+      description: "User management"
+    });
+  }
+
+  return items;
+};
 
 export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
   const pathname = usePathname();
-  const { counts, loading } = useCounts();
-  const navigation = getNavigation(counts);
+  const { user } = useAuth();
+  const { counts, loading } = useCounts(user?.role);
+  const navigation = getNavigation(counts, user?.role);
 
   return (
     <motion.aside
