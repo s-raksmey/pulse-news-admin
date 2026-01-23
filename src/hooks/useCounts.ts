@@ -11,7 +11,15 @@ interface Counts {
   media: number;
 }
 
-export function useCounts() {
+interface CountsResult {
+  counts: Counts;
+  loading: boolean;
+  errors: {
+    users?: string;
+  };
+}
+
+export function useCounts(): CountsResult {
   const [counts, setCounts] = useState<Counts>({
     articles: 0,
     users: 0,
@@ -19,6 +27,7 @@ export function useCounts() {
     media: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [errors, setErrors] = useState<{ users?: string }>({});
   
   const { getArticles } = useArticles();
   const { getCategories } = useCategories();
@@ -34,19 +43,48 @@ export function useCounts() {
 
         // Fetch users count using GraphQL stats (more efficient and reliable)
         let usersCount = 0;
+        let userError: string | undefined;
+        
         try {
           const userStats = await UserService.getUserStats();
           usersCount = userStats?.totalUsers || 0;
-        } catch (userError) {
-          console.warn('Failed to fetch users count via getUserStats, attempting fallback:', userError);
+          setErrors(prev => ({ ...prev, users: undefined })); // Clear any previous errors
+        } catch (error) {
+          console.warn('Failed to fetch users count via getUserStats, attempting fallback:', error);
           
-          // Fallback: Try to get a rough count from listUsers query
-          try {
-            const usersResult = await UserService.listUsers({ take: 1000, skip: 0 });
-            usersCount = usersResult?.totalCount || 0;
-          } catch (fallbackError) {
-            console.warn('Fallback users count also failed:', fallbackError);
-            // Keep default value of 0
+          // Check if it's a permission error
+          if (error instanceof Error && error.message.includes('Admin role required')) {
+            // Try basic stats fallback (requires only authentication)
+            try {
+              const basicStats = await UserService.getBasicStats();
+              usersCount = basicStats?.totalUsers || 0;
+              userError = 'Admin access required for detailed user statistics';
+              setErrors(prev => ({ ...prev, users: userError }));
+            } catch (basicError) {
+              console.warn('Basic stats fallback also failed:', basicError);
+              
+              // Final fallback: Try to get a rough count from listUsers query
+              try {
+                const usersResult = await UserService.listUsers({ take: 1000, skip: 0 });
+                usersCount = usersResult?.totalCount || 0;
+                userError = 'Admin access required for user management';
+                setErrors(prev => ({ ...prev, users: userError }));
+              } catch (fallbackError) {
+                console.warn('All user count methods failed:', fallbackError);
+                userError = 'Unable to fetch user statistics';
+                setErrors(prev => ({ ...prev, users: userError }));
+              }
+            }
+          } else {
+            // Non-permission error, try other fallbacks
+            try {
+              const usersResult = await UserService.listUsers({ take: 1000, skip: 0 });
+              usersCount = usersResult?.totalCount || 0;
+            } catch (fallbackError) {
+              console.warn('Fallback users count also failed:', fallbackError);
+              userError = 'Unable to fetch user statistics';
+              setErrors(prev => ({ ...prev, users: userError }));
+            }
           }
         }
 
@@ -82,5 +120,5 @@ export function useCounts() {
     fetchCounts();
   }, [getArticles, getCategories]);
 
-  return { counts, loading };
+  return { counts, loading, errors };
 }
