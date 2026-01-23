@@ -239,8 +239,10 @@ const BULK_UPDATE_USER_STATUS_MUTATION = gql`
 // ============================================================================
 
 export class UserService {
+  private static client = getAuthenticatedGqlClient();
+
   private static getClient() {
-    return getAuthenticatedGqlClient();
+    return this.client;
   }
 
   // Query Functions

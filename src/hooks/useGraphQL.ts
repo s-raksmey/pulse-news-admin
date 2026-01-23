@@ -30,7 +30,7 @@ export function useGraphQL() {
     setError(null);
 
     try {
-      const client = getAuthenticatedGqlClient(token);
+      const client = getAuthenticatedGqlClient(token ?? undefined);
       const response = await client.request<T>(query, variables);
       return response;
     } catch (err: any) {

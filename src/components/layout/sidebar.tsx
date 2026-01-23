@@ -74,7 +74,7 @@ const getNavigation = (counts: { articles: number; users: number; categories: nu
   
   if (userRole === 'ADMIN') {
     console.log('getNavigation Debug - Adding Users navigation item');
-    items.splice(-1, 0, {
+    baseItems.push({
       name: "Users",
       href: "/users",
       icon: Users,
@@ -95,7 +95,7 @@ const getNavigation = (counts: { articles: number; users: number; categories: nu
   };
 
   // Combine all items: base + admin + settings
-  return [...baseItems, ...adminItems, settingsItem];
+  return [...baseItems, settingsItem];
 };
 
 export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
