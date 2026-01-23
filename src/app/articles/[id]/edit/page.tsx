@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
-import { getGqlClient } from "@/services/graphql-client";
+import { getAuthenticatedGqlClient } from "@/services/graphql-client";
 import {
   Q_ARTICLE_BY_ID,
   M_UPSERT_ARTICLE,
@@ -49,7 +49,7 @@ export default function EditArticlePage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
 
-  const client = useMemo(() => getGqlClient(), []);
+  const client = useMemo(() => getAuthenticatedGqlClient(), []);
   const editorRef = useRef<NewsEditorRef>(null);
 
   const [loading, setLoading] = useState(true);
