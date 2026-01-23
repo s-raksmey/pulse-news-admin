@@ -41,6 +41,12 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<AuthResponse>;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  // Role checking utilities
+  hasRole: (role: 'ADMIN' | 'EDITOR' | 'AUTHOR') => boolean;
+  hasAnyRole: (roles: ('ADMIN' | 'EDITOR' | 'AUTHOR')[]) => boolean;
+  isAdmin: () => boolean;
+  isEditor: () => boolean;
+  isAuthor: () => boolean;
 }
 
 // GraphQL Queries and Mutations
@@ -285,6 +291,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  // Role checking utilities
+  const hasRole = (role: 'ADMIN' | 'EDITOR' | 'AUTHOR'): boolean => {
+    return user?.role === role;
+  };
+
+  const hasAnyRole = (roles: ('ADMIN' | 'EDITOR' | 'AUTHOR')[]): boolean => {
+    return user ? roles.includes(user.role) : false;
+  };
+
+  const isAdmin = (): boolean => hasRole('ADMIN');
+  const isEditor = (): boolean => hasRole('EDITOR');
+  const isAuthor = (): boolean => hasRole('AUTHOR');
+
   const value: AuthContextType = {
     user,
     token,
@@ -294,6 +313,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     logout,
     refreshUser: () => refreshUser(),
+    hasRole,
+    hasAnyRole,
+    isAdmin,
+    isEditor,
+    isAuthor,
   };
 
   return (

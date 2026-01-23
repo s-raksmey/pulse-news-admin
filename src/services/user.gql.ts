@@ -72,6 +72,15 @@ const GET_USER_STATS_QUERY = gql`
   }
 `;
 
+const GET_BASIC_STATS_QUERY = gql`
+  query GetBasicStats {
+    getBasicStats {
+      totalUsers
+      totalArticles
+    }
+  }
+`;
+
 const GET_USER_ACTIVITY_QUERY = gql`
   query GetUserActivity($userId: ID, $limit: Int) {
     getUserActivity(userId: $userId, limit: $limit) {
@@ -212,40 +221,83 @@ const BULK_UPDATE_USER_STATUS_MUTATION = gql`
 // ============================================================================
 
 export class UserService {
-  private static client = getAuthenticatedGqlClient();
+  private static getClient() {
+    return getAuthenticatedGqlClient();
+  }
 
   // Query Functions
   static async listUsers(input: ListUsersInput): Promise<UserListResult> {
     try {
-      const response = await this.client.request<{ listUsers: UserListResult }>(
+      console.log('🔍 Frontend Debug - UserService.listUsers called');
+      const client = this.getClient();
+      const response = await client.request<{ listUsers: UserListResult }>(
         LIST_USERS_QUERY,
         { input }
       );
+      
+      // Check for GraphQL errors in response
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors[0].message;
+        if (errorMessage.includes('Required role')) {
+          throw new Error('You do not have permission to access user management features. Admin role required.');
+        }
+        throw new Error(errorMessage);
+      }
+      
       return response.listUsers;
     } catch (error) {
-      console.error('Error listing users:', error);
+      console.error('🔍 Frontend Debug - Error listing users:', error);
+      if (error instanceof Error && error.message.includes('Admin role required')) {
+        throw error; // Re-throw permission errors as-is
+      }
       throw new Error('Failed to fetch users');
     }
   }
 
   static async getUserById(id: string): Promise<User> {
     try {
-      const response = await this.client.request<{ getUserById: User }>(
+      console.log('🔍 Frontend Debug - UserService.getUserById called');
+      const client = this.getClient();
+      const response = await client.request<{ getUserById: User }>(
         GET_USER_BY_ID_QUERY,
         { id }
       );
+      
+      // Check for GraphQL errors in response
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors[0].message;
+        if (errorMessage.includes('Required role')) {
+          throw new Error('You do not have permission to access user details. Insufficient permissions.');
+        }
+        throw new Error(errorMessage);
+      }
+      
       return response.getUserById;
     } catch (error) {
-      console.error('Error fetching user:', error);
+      console.error('🔍 Frontend Debug - Error fetching user:', error);
+      if (error instanceof Error && error.message.includes('Admin role required')) {
+        throw error; // Re-throw permission errors as-is
+      }
       throw new Error('Failed to fetch user details');
     }
   }
 
   static async getUserStats(): Promise<UserStats> {
     try {
-      const response = await this.client.request<{ getUserStats: UserStats | null }>(
+      console.log('🔍 Frontend Debug - UserService.getUserStats called');
+      const client = this.getClient();
+      const response = await client.request<{ getUserStats: UserStats | null }>(
         GET_USER_STATS_QUERY
       );
+      
+      // Check for GraphQL errors in response
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors[0].message;
+        if (errorMessage.includes('Required role')) {
+          throw new Error('You do not have permission to access user statistics. Admin role required.');
+        }
+        throw new Error(errorMessage);
+      }
       
       // Check if the response or getUserStats is null
       if (!response || response.getUserStats === null || response.getUserStats === undefined) {
@@ -273,6 +325,27 @@ export class UserService {
       }
       
       throw new Error('Failed to fetch user statistics');
+    }
+  }
+
+  static async getBasicStats(): Promise<{ totalUsers: number; totalArticles: number }> {
+    try {
+      console.log('🔍 Frontend Debug - UserService.getBasicStats called');
+      const client = this.getClient();
+      const response = await client.request<{ getBasicStats: { totalUsers: number; totalArticles: number } }>(
+        GET_BASIC_STATS_QUERY
+      );
+      
+      // Check for GraphQL errors in response
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors[0].message;
+        throw new Error(errorMessage);
+      }
+      
+      return response.getBasicStats;
+    } catch (error) {
+      console.error('🔍 Frontend Debug - Error fetching basic stats:', error);
+      throw new Error('Failed to fetch basic statistics');
     }
   }
 
