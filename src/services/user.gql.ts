@@ -72,6 +72,15 @@ const GET_USER_STATS_QUERY = gql`
   }
 `;
 
+const GET_BASIC_STATS_QUERY = gql`
+  query GetBasicStats {
+    getBasicStats {
+      totalUsers
+      totalArticles
+    }
+  }
+`;
+
 const GET_USER_ACTIVITY_QUERY = gql`
   query GetUserActivity($userId: ID, $limit: Int) {
     getUserActivity(userId: $userId, limit: $limit) {
@@ -212,38 +221,61 @@ const BULK_UPDATE_USER_STATUS_MUTATION = gql`
 // ============================================================================
 
 export class UserService {
-  private static client = getAuthenticatedGqlClient();
+  private static getClient() {
+    return getAuthenticatedGqlClient();
+  }
 
   // Query Functions
   static async listUsers(input: ListUsersInput): Promise<UserListResult> {
     try {
-      const response = await this.client.request<{ listUsers: UserListResult }>(
+      console.log('🔍 Frontend Debug - UserService.listUsers called');
+      const response = await this.getClient().request<{ listUsers: UserListResult }>(
         LIST_USERS_QUERY,
         { input }
       );
       return response.listUsers;
     } catch (error) {
-      console.error('Error listing users:', error);
+      console.error('🔍 Frontend Debug - Error listing users:', error);
+      
+      // Check for GraphQL authorization errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const graphqlError = error as any;
+        if (graphqlError.response?.errors?.some((e: any) => e.message?.includes('Required role'))) {
+          throw new Error('You do not have permission to access user management features. Admin role required.');
+        }
+      }
+      
       throw new Error('Failed to fetch users');
     }
   }
 
   static async getUserById(id: string): Promise<User> {
     try {
-      const response = await this.client.request<{ getUserById: User }>(
+      console.log('🔍 Frontend Debug - UserService.getUserById called');
+      const response = await this.getClient().request<{ getUserById: User }>(
         GET_USER_BY_ID_QUERY,
         { id }
       );
       return response.getUserById;
     } catch (error) {
-      console.error('Error fetching user:', error);
+      console.error('🔍 Frontend Debug - Error fetching user:', error);
+      
+      // Check for GraphQL authorization errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const graphqlError = error as any;
+        if (graphqlError.response?.errors?.some((e: any) => e.message?.includes('Required role'))) {
+          throw new Error('You do not have permission to access user details. Insufficient permissions.');
+        }
+      }
+      
       throw new Error('Failed to fetch user details');
     }
   }
 
   static async getUserStats(): Promise<UserStats> {
     try {
-      const response = await this.client.request<{ getUserStats: UserStats | null }>(
+      console.log('🔍 Frontend Debug - UserService.getUserStats called');
+      const response = await this.getClient().request<{ getUserStats: UserStats | null }>(
         GET_USER_STATS_QUERY
       );
       
@@ -254,7 +286,15 @@ export class UserService {
       
       return response.getUserStats;
     } catch (error) {
-      console.error('Error fetching user stats:', error);
+      console.error('🔍 Frontend Debug - Error fetching user stats:', error);
+      
+      // Check for GraphQL authorization errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const graphqlError = error as any;
+        if (graphqlError.response?.errors?.some((e: any) => e.message?.includes('Required role'))) {
+          throw new Error('You do not have permission to access user statistics. Admin role required.');
+        }
+      }
       
       // Check if this is a GraphQL resolver not implemented error
       if (error && typeof error === 'object' && 'response' in error) {
@@ -276,9 +316,32 @@ export class UserService {
     }
   }
 
+  static async getBasicStats(): Promise<{ totalUsers: number; totalArticles: number }> {
+    try {
+      console.log('🔍 Frontend Debug - UserService.getBasicStats called');
+      const response = await this.getClient().request<{ getBasicStats: { totalUsers: number; totalArticles: number } }>(
+        GET_BASIC_STATS_QUERY
+      );
+      
+      return response.getBasicStats;
+    } catch (error) {
+      console.error('🔍 Frontend Debug - Error fetching basic stats:', error);
+      
+      // Check for GraphQL authorization errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const graphqlError = error as any;
+        if (graphqlError.response?.errors?.some((e: any) => e.message?.includes('Required role'))) {
+          throw new Error('You do not have permission to access basic statistics. Authentication required.');
+        }
+      }
+      
+      throw new Error('Failed to fetch basic statistics');
+    }
+  }
+
   static async getUserActivity(userId?: string, limit?: number): Promise<ActivityLog[]> {
     try {
-      const response = await this.client.request<{ getUserActivity: ActivityLog[] }>(
+      const response = await this.getClient().request<{ getUserActivity: ActivityLog[] }>(
         GET_USER_ACTIVITY_QUERY,
         { userId, limit }
       );
@@ -292,7 +355,7 @@ export class UserService {
   // Mutation Functions
   static async updateUserProfile(input: UpdateUserProfileInput): Promise<UserManagementResult> {
     try {
-      const response = await this.client.request<{ updateUserProfile: UserManagementResult }>(
+      const response = await this.getClient().request<{ updateUserProfile: UserManagementResult }>(
         UPDATE_USER_PROFILE_MUTATION,
         { input }
       );
@@ -305,7 +368,7 @@ export class UserService {
 
   static async updateUserRole(input: UpdateUserRoleInput): Promise<UserManagementResult> {
     try {
-      const response = await this.client.request<{ updateUserRole: UserManagementResult }>(
+      const response = await this.getClient().request<{ updateUserRole: UserManagementResult }>(
         UPDATE_USER_ROLE_MUTATION,
         { input }
       );
@@ -318,7 +381,7 @@ export class UserService {
 
   static async updateUserStatus(input: UpdateUserStatusInput): Promise<UserManagementResult> {
     try {
-      const response = await this.client.request<{ updateUserStatus: UserManagementResult }>(
+      const response = await this.getClient().request<{ updateUserStatus: UserManagementResult }>(
         UPDATE_USER_STATUS_MUTATION,
         { input }
       );
@@ -331,7 +394,7 @@ export class UserService {
 
   static async deleteUser(id: string): Promise<UserManagementResult> {
     try {
-      const response = await this.client.request<{ deleteUser: UserManagementResult }>(
+      const response = await this.getClient().request<{ deleteUser: UserManagementResult }>(
         DELETE_USER_MUTATION,
         { id }
       );
@@ -344,7 +407,7 @@ export class UserService {
 
   static async changePassword(input: ChangePasswordInput): Promise<PasswordResetResult> {
     try {
-      const response = await this.client.request<{ changePassword: PasswordResetResult }>(
+      const response = await this.getClient().request<{ changePassword: PasswordResetResult }>(
         CHANGE_PASSWORD_MUTATION,
         { input }
       );
@@ -357,7 +420,7 @@ export class UserService {
 
   static async requestPasswordReset(input: RequestPasswordResetInput): Promise<PasswordResetResult> {
     try {
-      const response = await this.client.request<{ requestPasswordReset: PasswordResetResult }>(
+      const response = await this.getClient().request<{ requestPasswordReset: PasswordResetResult }>(
         REQUEST_PASSWORD_RESET_MUTATION,
         { input }
       );
@@ -370,7 +433,7 @@ export class UserService {
 
   static async resetPassword(input: ResetPasswordInput): Promise<PasswordResetResult> {
     try {
-      const response = await this.client.request<{ resetPassword: PasswordResetResult }>(
+      const response = await this.getClient().request<{ resetPassword: PasswordResetResult }>(
         RESET_PASSWORD_MUTATION,
         { input }
       );
@@ -383,7 +446,7 @@ export class UserService {
 
   static async bulkUpdateUserRoles(userIds: string[], role: string): Promise<UserManagementResult> {
     try {
-      const response = await this.client.request<{ bulkUpdateUserRoles: UserManagementResult }>(
+      const response = await this.getClient().request<{ bulkUpdateUserRoles: UserManagementResult }>(
         BULK_UPDATE_USER_ROLES_MUTATION,
         { userIds, role }
       );
@@ -396,7 +459,7 @@ export class UserService {
 
   static async bulkUpdateUserStatus(userIds: string[], isActive: boolean): Promise<UserManagementResult> {
     try {
-      const response = await this.client.request<{ bulkUpdateUserStatus: UserManagementResult }>(
+      const response = await this.getClient().request<{ bulkUpdateUserStatus: UserManagementResult }>(
         BULK_UPDATE_USER_STATUS_MUTATION,
         { userIds, isActive }
       );
