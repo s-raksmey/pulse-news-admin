@@ -243,9 +243,15 @@ export class UserService {
 
   static async getUserStats(): Promise<UserStats> {
     try {
-      const response = await this.client.request<{ getUserStats: UserStats }>(
+      const response = await this.client.request<{ getUserStats: UserStats | null }>(
         GET_USER_STATS_QUERY
       );
+      
+      // Check if the response or getUserStats is null
+      if (!response || response.getUserStats === null || response.getUserStats === undefined) {
+        throw new Error('User statistics data is not available. The backend resolver returned null.');
+      }
+      
       return response.getUserStats;
     } catch (error) {
       console.error('Error fetching user stats:', error);
@@ -259,6 +265,11 @@ export class UserService {
         )) {
           throw new Error('User statistics feature is temporarily unavailable. The backend service is being updated.');
         }
+      }
+      
+      // Handle null response specifically
+      if (error instanceof Error && error.message.includes('returned null')) {
+        throw new Error('User statistics are temporarily unavailable. The backend service needs to be configured.');
       }
       
       throw new Error('Failed to fetch user statistics');
@@ -412,11 +423,26 @@ export class UserService {
 
   static async getFallbackUserStats(): Promise<UserStats | null> {
     try {
+      console.log('Attempting to generate fallback user statistics...');
+      
       // Fetch all users to calculate basic statistics
       const allUsersResult = await this.listUsers({ take: 1000, skip: 0 });
-      const users = allUsersResult.users;
+      
+      if (!allUsersResult || !allUsersResult.users) {
+        console.warn('listUsers returned invalid data:', allUsersResult);
+        return {
+          totalUsers: 0,
+          activeUsers: 0,
+          inactiveUsers: 0,
+          usersByRole: { admin: 0, editor: 0, author: 0 },
+          recentRegistrations: 0
+        };
+      }
 
-      if (!users || users.length === 0) {
+      const users = allUsersResult.users;
+      console.log(`Processing ${users.length} users for fallback statistics`);
+
+      if (users.length === 0) {
         return {
           totalUsers: 0,
           activeUsers: 0,
@@ -439,17 +465,25 @@ export class UserService {
       // Calculate recent registrations (last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const recentRegistrations = users.filter(user => 
-        new Date(user.createdAt) > thirtyDaysAgo
-      ).length;
+      const recentRegistrations = users.filter(user => {
+        try {
+          return new Date(user.createdAt) > thirtyDaysAgo;
+        } catch (dateError) {
+          console.warn('Invalid date format for user:', user.id, user.createdAt);
+          return false;
+        }
+      }).length;
 
-      return {
+      const fallbackStats = {
         totalUsers,
         activeUsers,
         inactiveUsers,
         usersByRole,
         recentRegistrations
       };
+
+      console.log('Generated fallback statistics:', fallbackStats);
+      return fallbackStats;
     } catch (error) {
       console.error('Failed to generate fallback user stats:', error);
       return null;
