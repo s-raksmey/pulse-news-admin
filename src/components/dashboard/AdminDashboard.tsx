@@ -66,7 +66,7 @@ export const AdminDashboard: React.FC = () => {
       }
 
       // Fetch pending reviews count
-      const pendingData = await getArticles({ status: 'PENDING', take: 1000 });
+      const pendingData = await getArticles({ status: 'REVIEW', take: 1000 });
       if (pendingData?.articles) {
         setPendingReviews(pendingData.articles.length);
       }
@@ -114,27 +114,27 @@ export const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen">
+    <div className="space-y-6 p-6 bg-gradient-to-br from-slate-50 to-gray-50 min-h-screen">
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold text-gray-900">
             Admin Dashboard
           </h1>
-          <p className="text-gray-600 mt-2 text-lg">System overview and platform management</p>
+          <p className="text-gray-600 mt-1">System overview and platform management</p>
         </div>
         <div className="flex items-center space-x-3">
           <Button 
             onClick={handleRefresh} 
             disabled={refreshing}
             variant="outline"
-            className="border-blue-200 text-blue-600 hover:bg-blue-50"
+            className="border-gray-300"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Link href="/settings">
-            <Button className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600">
+            <Button className="bg-blue-600 hover:bg-blue-700">
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
@@ -334,82 +334,34 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Platform Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Content Statistics */}
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
-              <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
-              Content Analytics
-            </CardTitle>
-            <CardDescription>Platform content performance metrics</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
-                <Globe className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                <p className="text-2xl font-bold text-purple-900">{publishedArticles}</p>
-                <p className="text-sm text-purple-700">Published Articles</p>
-              </div>
-              <div className="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg">
-                <Clock className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
-                <p className="text-2xl font-bold text-indigo-900">{pendingReviews}</p>
-                <p className="text-sm text-indigo-700">Pending Reviews</p>
-              </div>
+      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
+            <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
+            Content Analytics
+          </CardTitle>
+          <CardDescription>Platform content performance metrics</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
+              <Globe className="h-10 w-10 mx-auto mb-3 text-purple-600" />
+              <p className="text-3xl font-bold text-purple-900">{publishedArticles}</p>
+              <p className="text-sm text-purple-700 mt-1">Published Articles</p>
             </div>
-            
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Content Approval Rate</span>
-                <span className="font-semibold text-gray-900">87%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full" style={{ width: '87%' }}></div>
-              </div>
+            <div className="text-center p-6 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg">
+              <Clock className="h-10 w-10 mx-auto mb-3 text-indigo-600" />
+              <p className="text-3xl font-bold text-indigo-900">{pendingReviews}</p>
+              <p className="text-sm text-indigo-700 mt-1">Pending Reviews</p>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
-              <Zap className="h-5 w-5 mr-2 text-yellow-600" />
-              Quick Actions
-            </CardTitle>
-            <CardDescription>Common administrative tasks</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-3">
-              <Link href="/users">
-                <Button variant="outline" className="w-full justify-start h-12">
-                  <Users className="h-4 w-4 mr-3" />
-                  Manage Users
-                </Button>
-              </Link>
-              <Link href="/articles">
-                <Button variant="outline" className="w-full justify-start h-12">
-                  <FileText className="h-4 w-4 mr-3" />
-                  Review Articles
-                </Button>
-              </Link>
-              <Link href="/settings">
-                <Button variant="outline" className="w-full justify-start h-12">
-                  <Settings className="h-4 w-4 mr-3" />
-                  System Settings
-                </Button>
-              </Link>
-              <Link href="/analytics">
-                <Button variant="outline" className="w-full justify-start h-12">
-                  <TrendingUp className="h-4 w-4 mr-3" />
-                  View Analytics
-                </Button>
-              </Link>
+            <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
+              <CheckCircle className="h-10 w-10 mx-auto mb-3 text-green-600" />
+              <p className="text-3xl font-bold text-green-900">87%</p>
+              <p className="text-sm text-green-700 mt-1">Approval Rate</p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
-

@@ -84,9 +84,9 @@ export const AuthorDashboard: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PUBLISHED': return 'bg-green-100 text-green-800 border-green-200';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'REVIEW': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'DRAFT': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'REJECTED': return 'bg-red-100 text-red-800 border-red-200';
+      case 'ARCHIVED': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -94,9 +94,9 @@ export const AuthorDashboard: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'PUBLISHED': return <CheckCircle className="h-4 w-4" />;
-      case 'PENDING': return <Clock className="h-4 w-4" />;
+      case 'REVIEW': return <Clock className="h-4 w-4" />;
       case 'DRAFT': return <Edit className="h-4 w-4" />;
-      case 'REJECTED': return <XCircle className="h-4 w-4" />;
+      case 'ARCHIVED': return <XCircle className="h-4 w-4" />;
       default: return <FileText className="h-4 w-4" />;
     }
   };
@@ -116,7 +116,7 @@ export const AuthorDashboard: React.FC = () => {
   const recentActivity: ActivityItem[] = articles.slice(0, 5).map(article => ({
     id: article.id,
     type: article.status === 'PUBLISHED' ? 'publish' : 
-          article.status === 'PENDING' ? 'update' : 'create',
+          article.status === 'REVIEW' ? 'update' : 'create',
     title: article.title,
     description: `${article.status.toLowerCase()} • ${article.category.name}`,
     timestamp: article.updatedAt,
@@ -127,27 +127,27 @@ export const AuthorDashboard: React.FC = () => {
   }));
 
   return (
-    <div className="space-y-8 p-6 bg-gradient-to-br from-purple-50 to-blue-50 min-h-screen">
+    <div className="space-y-6 p-6 bg-gradient-to-br from-slate-50 to-gray-50 min-h-screen">
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold text-gray-900">
             Author Dashboard
           </h1>
-          <p className="text-gray-600 mt-2 text-lg">Your writing journey and content analytics</p>
+          <p className="text-gray-600 mt-1">Your writing journey and content analytics</p>
         </div>
         <div className="flex items-center space-x-3">
           <Button 
             onClick={handleRefresh} 
             disabled={refreshing}
             variant="outline"
-            className="border-purple-200 text-purple-600 hover:bg-purple-50"
+            className="border-gray-300"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Link href="/articles/new">
-            <Button className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600">
+            <Button className="bg-blue-600 hover:bg-blue-700">
               <PlusCircle className="h-4 w-4 mr-2" />
               New Article
             </Button>
@@ -485,4 +485,3 @@ export const AuthorDashboard: React.FC = () => {
     </div>
   );
 };
-

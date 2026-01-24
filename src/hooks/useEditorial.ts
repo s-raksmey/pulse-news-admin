@@ -81,7 +81,7 @@ export function useEditorial() {
   const getEditorialStats = useCallback(async (): Promise<EditorialStats> => {
     const EDITORIAL_STATS_QUERY = `
       query GetEditorialStats {
-        articles(status: PENDING) {
+        articles(status: REVIEW) {
           id
         }
         approvedToday: articles(status: PUBLISHED, publishedAfter: "${new Date().toISOString().split('T')[0]}") {
@@ -119,7 +119,7 @@ export function useEditorial() {
   const getPendingArticles = useCallback(async (limit = 10): Promise<PendingArticle[]> => {
     const PENDING_ARTICLES_QUERY = `
       query GetPendingArticles($take: Int) {
-        articles(status: PENDING, take: $take) {
+        articles(status: REVIEW, take: $take) {
           id
           title
           excerpt
@@ -269,4 +269,3 @@ export function useEditorial() {
     featureArticle,
   };
 }
-

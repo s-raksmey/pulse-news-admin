@@ -23,7 +23,7 @@ export interface AuthorStats {
 export interface AuthorArticle {
   id: string;
   title: string;
-  status: 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED';
+  status: 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'ARCHIVED';
   views?: number;
   publishedAt?: string;
   createdAt: string;
@@ -119,7 +119,7 @@ export function useAuthorStats() {
         }
         
         # Get pending articles
-        pendingArticles: articles(status: PENDING, take: 1000) {
+        pendingArticles: articles(status: REVIEW, take: 1000) {
           id
           authorName
         }
@@ -322,4 +322,3 @@ export function useAuthorStats() {
     updateWritingGoal,
   };
 }
-
