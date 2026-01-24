@@ -61,11 +61,26 @@ export default function NewArticlePage() {
   const [saving, setSaving] = useState(false);
 
   const categoryOptions = Object.keys(MEGA_NAV);
-  const topicOptions = categorySlug
-    ? MEGA_NAV[categorySlug].explore.items
-        .map((i) => i.href.split("/").pop())
-        .filter((t): t is string => Boolean(t))
-    : [];
+  const topicOptions = useMemo(() => {
+    if (!categorySlug) return [];
+
+    const cfg = MEGA_NAV[categorySlug];
+    if (!cfg) return [];
+
+    const allItems = [
+      ...cfg.explore.items,
+      ...cfg.shop.items,
+      ...cfg.more.items,
+    ];
+
+    return Array.from(
+      new Set(
+        allItems
+          .map((i) => i.href.split("/").pop())
+          .filter((t): t is string => Boolean(t))
+      )
+    );
+  }, [categorySlug]);
 
   /* -------------------------
      Save

@@ -132,9 +132,10 @@ export default function AdminArticlesPage() {
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div className="grid grid-cols-12 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600">
-          <div className="col-span-5">Title</div>
+          <div className="col-span-4">Title</div>
           <div className="col-span-2">Status</div>
           <div className="col-span-2">Category</div>
+          <div className="col-span-1">Topic</div>
           <div className="col-span-2">Updated</div>
           <div className="col-span-1 text-right">Actions</div>
         </div>
@@ -146,7 +147,7 @@ export default function AdminArticlesPage() {
         ) : (
           articles.map((article) => (
             <div key={article.id} className="grid grid-cols-12 items-center px-4 py-3 text-sm border-b last:border-b-0 hover:bg-slate-50">
-              <div className="col-span-5">
+              <div className="col-span-4">
                 <div className="font-medium">{article.title}</div>
                 <div className="text-xs text-slate-500 flex items-center gap-2">
                   /{article.slug}
@@ -162,6 +163,9 @@ export default function AdminArticlesPage() {
               </div>
               <div className="col-span-2 text-slate-600 text-xs">
                 {article.category?.name ?? "—"}
+              </div>
+              <div className="col-span-1 text-slate-600 text-xs">
+                {article.topic ?? "—"}
               </div>
               <div className="col-span-2 text-slate-600 text-xs">
                 {format(new Date(article.updatedAt), 'MMM d, yyyy')}
