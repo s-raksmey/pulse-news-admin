@@ -20,7 +20,15 @@ import {
   Eye,
   UserCheck,
   Calendar,
-  Server
+  Server,
+  Lock,
+  Unlock,
+  UserPlus,
+  FileEdit,
+  Trash2,
+  Star,
+  Newspaper,
+  Award
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +38,8 @@ import Link from 'next/link';
 import { useUserManagement, UserStats } from '@/hooks/useUserManagement';
 import { useArticles } from '@/hooks/useGraphQL';
 import { useEditorial } from '@/hooks/useEditorial';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Permission } from '@/components/permissions/PermissionGuard';
 import { 
   StatCard, 
   MetricCard, 
@@ -67,6 +77,14 @@ export const AdminDashboard: React.FC = () => {
   const { getUserStats, getBasicStats, getUserActivity, loading: userLoading, error: userError } = useUserManagement();
   const { getArticles, loading: articlesLoading, error: articlesError } = useArticles();
   const { getEditorialStats, loading: editorialLoading } = useEditorial();
+  const { 
+    hasPermission, 
+    isAdmin, 
+    isEditor, 
+    isAuthor, 
+    userRole,
+    isLoading: permissionsLoading 
+  } = usePermissions();
   
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
@@ -189,17 +207,46 @@ export const AdminDashboard: React.FC = () => {
     setRefreshing(false);
   };
 
-  const loading = userLoading || articlesLoading || editorialLoading;
+  const loading = userLoading || articlesLoading || editorialLoading || permissionsLoading;
   const error = userError || articlesError;
 
-  return (
+  // Show loading state while permissions are being determined
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-600" />
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render role-specific dashboard
+  const renderRoleBasedDashboard = () => {
+    if (isAdmin) {
+      return renderAdminDashboard();
+    } else if (isEditor) {
+      return renderEditorDashboard();
+    } else if (isAuthor) {
+      return renderAuthorDashboard();
+    } else {
+      return renderUnauthorizedDashboard();
+    }
+  };
+
+  // Admin Dashboard Layout
+  const renderAdminDashboard = () => (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-100">
       <div className="max-w-7xl mx-auto p-6 space-y-8">
-        {/* Clean Header */}
+        {/* Admin Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-            <p className="text-gray-600 text-sm">System overview and platform management</p>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <Shield className="h-6 w-6 text-red-600" />
+              Admin Dashboard
+            </h1>
+            <p className="text-gray-600 text-sm">Full system control and platform governance</p>
           </div>
           <div className="flex items-center gap-3">
             <Button 
@@ -212,12 +259,14 @@ export const AdminDashboard: React.FC = () => {
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Link href="/settings">
-              <Button size="sm" className="bg-gray-900 hover:bg-gray-800">
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-            </Link>
+            {hasPermission(Permission.VIEW_SETTINGS) && (
+              <Link href="/settings">
+                <Button size="sm" className="bg-red-600 hover:bg-red-700">
+                  <Settings className="h-4 w-4 mr-2" />
+                  System Settings
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -233,7 +282,7 @@ export const AdminDashboard: React.FC = () => {
           </Card>
         )}
 
-        {/* Key Metrics - Clean Grid */}
+        {/* Admin Key Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {loading ? (
             Array.from({ length: 4 }).map((_, i) => (
@@ -247,13 +296,34 @@ export const AdminDashboard: React.FC = () => {
             ))
           ) : (
             <>
-              <Card className="hover:shadow-md transition-shadow">
+              {/* System Health */}
+              <Card className="hover:shadow-md transition-shadow border-green-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Server className="h-5 w-5 text-green-600" />
+                    </div>
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                      {systemHealth?.uptime.toFixed(1) || 99.9}%
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {systemHealth?.responseTime || 45}ms
+                    </p>
+                    <p className="text-sm text-gray-600">Response Time</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* User Management */}
+              <Card className="hover:shadow-md transition-shadow border-blue-200">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="p-2 bg-blue-100 rounded-lg">
                       <Users className="h-5 w-5 text-blue-600" />
                     </div>
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
                       +{dashboardStats?.userGrowth || 0}
                     </Badge>
                   </div>
@@ -266,62 +336,45 @@ export const AdminDashboard: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <UserCheck className="h-5 w-5 text-green-600" />
-                    </div>
-                    <Badge variant="secondary" className="text-xs">
-                      85%
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {dashboardStats?.activeUsers?.toLocaleString() || 0}
-                    </p>
-                    <p className="text-sm text-gray-600">Active Users</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow">
+              {/* Platform Analytics */}
+              <Card className="hover:shadow-md transition-shadow border-purple-200">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="p-2 bg-purple-100 rounded-lg">
-                      <FileText className="h-5 w-5 text-purple-600" />
+                      <BarChart3 className="h-5 w-5 text-purple-600" />
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      +{dashboardStats?.articleGrowth || 0}
+                    <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
+                      {dashboardStats?.approvalRate || 0}%
                     </Badge>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900">
                       {dashboardStats?.totalArticles?.toLocaleString() || 0}
                     </p>
-                    <p className="text-sm text-gray-600">Total Articles</p>
+                    <p className="text-sm text-gray-600">Published Articles</p>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-md transition-shadow">
+              {/* System Activity */}
+              <Card className="hover:shadow-md transition-shadow border-orange-200">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="p-2 bg-orange-100 rounded-lg">
-                      <Clock className="h-5 w-5 text-orange-600" />
+                      <Activity className="h-5 w-5 text-orange-600" />
                     </div>
                     <Badge 
-                      variant={dashboardStats?.pendingReviews === 0 ? "secondary" : "destructive"} 
+                      variant={systemHealth?.activeConnections > 100 ? "default" : "secondary"} 
                       className="text-xs"
                     >
-                      {dashboardStats?.pendingReviews === 0 ? 'Clear' : 'Pending'}
+                      Live
                     </Badge>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900">
-                      {dashboardStats?.pendingReviews || 0}
+                      {systemHealth?.activeConnections?.toLocaleString() || 0}
                     </p>
-                    <p className="text-sm text-gray-600">Pending Reviews</p>
+                    <p className="text-sm text-gray-600">Active Connections</p>
                   </div>
                 </CardContent>
               </Card>
@@ -329,26 +382,29 @@ export const AdminDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Main Content - Two Column Layout */}
+        {/* Admin Main Content - Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Content Overview - Takes 2 columns */}
+          {/* Admin Content Overview - Takes 2 columns */}
           <div className="lg:col-span-2 space-y-6">
-            {/* User Role Distribution */}
+            {/* User Management Section */}
             <Card>
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <Users className="h-5 w-5 text-gray-600" />
-                      User Distribution
+                      <Users className="h-5 w-5 text-red-600" />
+                      User Management
                     </CardTitle>
-                    <CardDescription>Platform users by role</CardDescription>
+                    <CardDescription>Platform users by role and management tools</CardDescription>
                   </div>
-                  <Link href="/users">
-                    <Button variant="outline" size="sm">
-                      Manage Users
-                    </Button>
-                  </Link>
+                  {hasPermission(Permission.VIEW_ALL_USERS) && (
+                    <Link href="/users">
+                      <Button variant="outline" size="sm">
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Manage Users
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -366,30 +422,48 @@ export const AdminDashboard: React.FC = () => {
                       <Shield className="h-8 w-8 mx-auto mb-2 text-red-600" />
                       <p className="text-xl font-bold text-red-900">{userStats.usersByRole.admin}</p>
                       <p className="text-xs text-red-700">Admins</p>
+                      {hasPermission(Permission.MANAGE_USER_ROLES) && (
+                        <Button size="sm" variant="ghost" className="mt-2 text-xs">
+                          <Lock className="h-3 w-3 mr-1" />
+                          Manage
+                        </Button>
+                      )}
                     </div>
                     <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
                       <CheckCircle className="h-8 w-8 mx-auto mb-2 text-blue-600" />
                       <p className="text-xl font-bold text-blue-900">{userStats.usersByRole.editor}</p>
                       <p className="text-xs text-blue-700">Editors</p>
+                      {hasPermission(Permission.MANAGE_USER_ROLES) && (
+                        <Button size="sm" variant="ghost" className="mt-2 text-xs">
+                          <FileEdit className="h-3 w-3 mr-1" />
+                          Manage
+                        </Button>
+                      )}
                     </div>
                     <div className="text-center p-4 bg-green-50 rounded-lg border border-green-100">
                       <FileText className="h-8 w-8 mx-auto mb-2 text-green-600" />
                       <p className="text-xl font-bold text-green-900">{userStats.usersByRole.author}</p>
                       <p className="text-xs text-green-700">Authors</p>
+                      {hasPermission(Permission.MANAGE_USER_ROLES) && (
+                        <Button size="sm" variant="ghost" className="mt-2 text-xs">
+                          <Newspaper className="h-3 w-3 mr-1" />
+                          Manage
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Content Analytics */}
+            {/* Platform Analytics Section */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-gray-600" />
-                  Content Analytics
+                  <BarChart3 className="h-5 w-5 text-red-600" />
+                  Platform Analytics
                 </CardTitle>
-                <CardDescription>Article status and performance metrics</CardDescription>
+                <CardDescription>Content performance and approval metrics</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -399,13 +473,25 @@ export const AdminDashboard: React.FC = () => {
                       {dashboardStats?.publishedArticles || 0}
                     </p>
                     <p className="text-xs text-green-700">Published</p>
+                    {hasPermission(Permission.PUBLISH_ARTICLE) && (
+                      <Button size="sm" variant="ghost" className="mt-1 text-xs">
+                        <Eye className="h-3 w-3 mr-1" />
+                        View
+                      </Button>
+                    )}
                   </div>
                   <div className="text-center p-4 bg-yellow-50 rounded-lg">
                     <Clock className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
                     <p className="text-lg font-bold text-yellow-900">
                       {dashboardStats?.pendingReviews || 0}
                     </p>
-                    <p className="text-xs text-yellow-700">In Review</p>
+                    <p className="text-xs text-yellow-700">Pending Review</p>
+                    {hasPermission(Permission.REVIEW_ARTICLES) && (
+                      <Button size="sm" variant="ghost" className="mt-1 text-xs">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Review
+                      </Button>
+                    )}
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <FileText className="h-6 w-6 mx-auto mb-2 text-gray-600" />
@@ -413,29 +499,41 @@ export const AdminDashboard: React.FC = () => {
                       {dashboardStats?.draftArticles || 0}
                     </p>
                     <p className="text-xs text-gray-700">Drafts</p>
+                    {hasPermission(Permission.UPDATE_ANY_ARTICLE) && (
+                      <Button size="sm" variant="ghost" className="mt-1 text-xs">
+                        <FileEdit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                    )}
                   </div>
                   <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <CheckCircle className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                    <Award className="h-6 w-6 mx-auto mb-2 text-blue-600" />
                     <p className="text-lg font-bold text-blue-900">
                       {dashboardStats?.approvalRate || 0}%
                     </p>
                     <p className="text-xs text-blue-700">Approval Rate</p>
+                    {hasPermission(Permission.VIEW_AUDIT_LOGS) && (
+                      <Button size="sm" variant="ghost" className="mt-1 text-xs">
+                        <BarChart3 className="h-3 w-3 mr-1" />
+                        Analytics
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* System Health Sidebar */}
+          {/* Admin System Sidebar */}
           <div className="space-y-6">
             {/* System Health */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <Server className="h-5 w-5 text-gray-600" />
+                  <Server className="h-5 w-5 text-red-600" />
                   System Health
                 </CardTitle>
-                <CardDescription>Real-time system metrics</CardDescription>
+                <CardDescription>Real-time system monitoring</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {!systemHealth ? (
@@ -483,18 +581,25 @@ export const AdminDashboard: React.FC = () => {
                         <span>{systemHealth.activeConnections.toLocaleString()}</span>
                       </div>
                     </div>
+                    {hasPermission(Permission.SYSTEM_ADMINISTRATION) && (
+                      <Button size="sm" variant="outline" className="w-full mt-3">
+                        <Settings className="h-4 w-4 mr-2" />
+                        System Settings
+                      </Button>
+                    )}
                   </>
                 )}
               </CardContent>
             </Card>
 
-            {/* Recent Activity */}
+            {/* System Activity Feed */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-gray-600" />
-                  Recent Activity
+                  <Activity className="h-5 w-5 text-red-600" />
+                  System Activity
                 </CardTitle>
+                <CardDescription>Recent platform activity</CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -513,8 +618,8 @@ export const AdminDashboard: React.FC = () => {
                   <div className="space-y-3">
                     {systemActivity.slice(0, 5).map((activity) => (
                       <div key={activity.id} className="flex items-start gap-3 text-sm">
-                        <div className="p-1 bg-gray-100 rounded-full mt-0.5">
-                          <Activity className="h-3 w-3 text-gray-600" />
+                        <div className="p-1 bg-red-100 rounded-full mt-0.5">
+                          <Activity className="h-3 w-3 text-red-600" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-gray-900 truncate">
@@ -535,6 +640,12 @@ export const AdminDashboard: React.FC = () => {
                     No recent activity
                   </p>
                 )}
+                {hasPermission(Permission.VIEW_AUDIT_LOGS) && (
+                  <Button size="sm" variant="outline" className="w-full mt-4">
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Audit Logs
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -542,4 +653,76 @@ export const AdminDashboard: React.FC = () => {
       </div>
     </div>
   );
+
+  // Editor Dashboard Layout
+  const renderEditorDashboard = () => (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <CheckCircle className="h-6 w-6 text-blue-600" />
+              Editor Dashboard
+            </h1>
+            <p className="text-gray-600 text-sm">Content management and editorial control</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button onClick={handleRefresh} disabled={refreshing} variant="outline" size="sm">
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </div>
+        <div className="text-center py-20">
+          <CheckCircle className="h-16 w-16 mx-auto mb-4 text-blue-600" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Editor Dashboard</h2>
+          <p className="text-gray-600">Editorial workflow and content management tools coming soon...</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Author Dashboard Layout
+  const renderAuthorDashboard = () => (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <FileText className="h-6 w-6 text-green-600" />
+              Author Dashboard
+            </h1>
+            <p className="text-gray-600 text-sm">Content creation and personal analytics</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button onClick={handleRefresh} disabled={refreshing} variant="outline" size="sm">
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </div>
+        <div className="text-center py-20">
+          <FileText className="h-16 w-16 mx-auto mb-4 text-green-600" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Author Dashboard</h2>
+          <p className="text-gray-600">Personal content management and writing tools coming soon...</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Unauthorized Dashboard Layout
+  const renderUnauthorizedDashboard = () => (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-100">
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
+        <div className="text-center py-20">
+          <Lock className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You don't have permission to access this dashboard.</p>
+          <p className="text-gray-500 text-sm mt-2">Current role: {userRole || 'Unknown'}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  return renderRoleBasedDashboard();
 };
