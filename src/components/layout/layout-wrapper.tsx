@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sidebar } from "./sidebar";
+import { PermissionSidebar } from "../navigation/PermissionSidebar";
 import { Header } from "./header";
 import { MobileNav } from "./mobile-nav";
 
@@ -30,7 +30,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
     <div className="min-h-screen bg-slate-50">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
-        <Sidebar
+        <PermissionSidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
