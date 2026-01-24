@@ -28,7 +28,6 @@ export function SettingsCategory({
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [hasChanges, setHasChanges] = React.useState<Record<string, boolean>>({});
 
-  // Memoize categorySettings to prevent infinite re-renders
   const categorySettings = React.useMemo(() => 
     getSettingsByType(settings, category), 
     [settings, category]
