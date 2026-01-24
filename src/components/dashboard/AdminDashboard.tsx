@@ -998,11 +998,22 @@ export const AdminDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Placeholder for main content - will be added in next step */}
-        <div className="text-center py-20">
-          <CheckCircle className="h-16 w-16 mx-auto mb-4 text-blue-600" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Editor Dashboard Content</h2>
-          <p className="text-gray-600">Main content sections will be added next...</p>
+        {/* Editor Main Content - Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="text-gray-500">Main content sections coming...</p>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="text-gray-500">Sidebar content coming...</p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
