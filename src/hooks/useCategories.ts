@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { client } from '@/services/graphql-client';
+import { getAuthenticatedGqlClient } from '@/services/graphql-client';
 import { Q_CATEGORIES } from '@/services/article.gql';
 
 export interface Category {
@@ -26,6 +26,7 @@ export function useCategories(): UseCategoriesResult {
       try {
         setLoading(true);
         setError(null);
+        const client = getAuthenticatedGqlClient();
         const data = await client.request(Q_CATEGORIES);
         setCategories(data.categories || []);
       } catch (err) {
