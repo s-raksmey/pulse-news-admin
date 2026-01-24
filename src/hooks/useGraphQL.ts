@@ -360,3 +360,6 @@ export function useSearch() {
     error,
   };
 }
+
+// Re-export user management hook for convenience
+export { useUserManagement } from './useUserManagement';
