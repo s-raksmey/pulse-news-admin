@@ -14,7 +14,8 @@ import {
   AlertCircle,
   Eye,
   ThumbsUp,
-  MessageSquare
+  MessageSquare,
+  BarChart3
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -368,4 +369,3 @@ export const EditorDashboard: React.FC<EditorDashboardProps> = ({
 };
 
 export default EditorDashboard;
-
