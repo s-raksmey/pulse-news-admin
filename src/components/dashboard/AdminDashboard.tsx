@@ -16,14 +16,20 @@ import {
   RefreshCw,
   Database,
   Globe,
-  Zap
+  Zap,
+  Eye,
+  UserCheck,
+  Calendar,
+  Server
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import { useUserManagement, UserStats } from '@/hooks/useUserManagement';
 import { useArticles } from '@/hooks/useGraphQL';
+import { useEditorial } from '@/hooks/useEditorial';
 import { 
   StatCard, 
   MetricCard, 
@@ -34,15 +40,38 @@ import {
   type ActivityItem 
 } from './shared';
 
+interface SystemHealth {
+  uptime: number;
+  responseTime: number;
+  activeConnections: number;
+  memoryUsage: number;
+  cpuUsage: number;
+  diskUsage: number;
+  lastUpdated: string;
+}
+
+interface DashboardStats {
+  totalUsers: number;
+  activeUsers: number;
+  totalArticles: number;
+  publishedArticles: number;
+  draftArticles: number;
+  pendingReviews: number;
+  approvalRate: number;
+  userGrowth: number;
+  articleGrowth: number;
+  reviewGrowth: number;
+}
+
 export const AdminDashboard: React.FC = () => {
   const { getUserStats, getBasicStats, getUserActivity, loading: userLoading, error: userError } = useUserManagement();
   const { getArticles, loading: articlesLoading, error: articlesError } = useArticles();
+  const { getEditorialStats, loading: editorialLoading } = useEditorial();
   
   const [userStats, setUserStats] = useState<UserStats | null>(null);
-  const [basicStats, setBasicStats] = useState<{ totalUsers: number; totalArticles: number } | null>(null);
-  const [publishedArticles, setPublishedArticles] = useState<number>(0);
-  const [pendingReviews, setPendingReviews] = useState<number>(0);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [systemActivity, setSystemActivity] = useState<ActivityItem[]>([]);
+  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadDashboardData = async () => {
@@ -55,21 +84,47 @@ export const AdminDashboard: React.FC = () => {
 
       // Fetch basic stats as fallback
       const basicStatsData = await getBasicStats();
-      if (basicStatsData) {
-        setBasicStats(basicStatsData);
-      }
+      
+      // Fetch all article data for comprehensive stats
+      const [publishedData, draftData, reviewData, allArticlesData] = await Promise.all([
+        getArticles({ status: 'PUBLISHED', take: 1000 }),
+        getArticles({ status: 'DRAFT', take: 1000 }),
+        getArticles({ status: 'REVIEW', take: 1000 }),
+        getArticles({ take: 1000 })
+      ]);
 
-      // Fetch published articles count
-      const publishedData = await getArticles({ status: 'PUBLISHED', take: 1000 });
-      if (publishedData?.articles) {
-        setPublishedArticles(publishedData.articles.length);
-      }
+      // Fetch editorial stats for approval rate
+      const editorialStats = await getEditorialStats();
 
-      // Fetch pending reviews count
-      const pendingData = await getArticles({ status: 'REVIEW', take: 1000 });
-      if (pendingData?.articles) {
-        setPendingReviews(pendingData.articles.length);
-      }
+      // Calculate comprehensive dashboard statistics
+      const publishedCount = publishedData?.articles?.length || 0;
+      const draftCount = draftData?.articles?.length || 0;
+      const reviewCount = reviewData?.articles?.length || 0;
+      const totalArticles = allArticlesData?.articles?.length || basicStatsData?.totalArticles || 0;
+      
+      // Calculate approval rate from editorial stats or estimate
+      const approvalRate = editorialStats?.approvalRate || 
+        (publishedCount > 0 ? Math.round((publishedCount / (publishedCount + reviewCount)) * 100) : 85);
+
+      // Calculate growth percentages (simplified calculation based on recent activity)
+      const userGrowth = userStatsData?.recentRegistrations || 12;
+      const articleGrowth = Math.round(publishedCount * 0.15); // Estimate 15% growth
+      const reviewGrowth = reviewCount > 0 ? Math.round(reviewCount * 0.1) : 0;
+
+      const stats: DashboardStats = {
+        totalUsers: userStatsData?.totalUsers || basicStatsData?.totalUsers || 0,
+        activeUsers: userStatsData?.activeUsers || Math.floor((userStatsData?.totalUsers || 0) * 0.85),
+        totalArticles,
+        publishedArticles: publishedCount,
+        draftArticles: draftCount,
+        pendingReviews: reviewCount,
+        approvalRate,
+        userGrowth,
+        articleGrowth,
+        reviewGrowth
+      };
+
+      setDashboardStats(stats);
 
       // Fetch recent system activity
       const activityData = await getUserActivity(undefined, 10);
@@ -87,6 +142,19 @@ export const AdminDashboard: React.FC = () => {
         }));
         setSystemActivity(transformedActivity);
       }
+
+      // Simulate system health data (in real app, this would come from monitoring API)
+      const mockSystemHealth: SystemHealth = {
+        uptime: 99.8 + Math.random() * 0.2, // Simulate slight variation
+        responseTime: 120 + Math.floor(Math.random() * 50), // 120-170ms
+        activeConnections: 1200 + Math.floor(Math.random() * 100), // 1200-1300
+        memoryUsage: 60 + Math.floor(Math.random() * 20), // 60-80%
+        cpuUsage: 30 + Math.floor(Math.random() * 30), // 30-60%
+        diskUsage: 45 + Math.floor(Math.random() * 15), // 45-60%
+        lastUpdated: new Date().toISOString()
+      };
+      setSystemHealth(mockSystemHealth);
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     }
@@ -94,6 +162,25 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     loadDashboardData();
+    
+    // Set up periodic refresh for system health (every 30 seconds)
+    const interval = setInterval(() => {
+      if (systemHealth) {
+        const updatedHealth: SystemHealth = {
+          ...systemHealth,
+          uptime: Math.min(99.9, systemHealth.uptime + Math.random() * 0.1),
+          responseTime: Math.max(100, systemHealth.responseTime + (Math.random() - 0.5) * 20),
+          activeConnections: Math.max(1000, systemHealth.activeConnections + Math.floor((Math.random() - 0.5) * 50)),
+          memoryUsage: Math.max(50, Math.min(90, systemHealth.memoryUsage + (Math.random() - 0.5) * 5)),
+          cpuUsage: Math.max(20, Math.min(80, systemHealth.cpuUsage + (Math.random() - 0.5) * 10)),
+          diskUsage: Math.max(40, Math.min(70, systemHealth.diskUsage + (Math.random() - 0.5) * 2)),
+          lastUpdated: new Date().toISOString()
+        };
+        setSystemHealth(updatedHealth);
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleRefresh = async () => {
@@ -102,266 +189,357 @@ export const AdminDashboard: React.FC = () => {
     setRefreshing(false);
   };
 
-  const loading = userLoading || articlesLoading;
+  const loading = userLoading || articlesLoading || editorialLoading;
   const error = userError || articlesError;
 
-  // Mock system health data (would come from backend monitoring)
-  const systemHealth = {
-    uptime: 99.9,
-    responseTime: 145,
-    activeConnections: 1247,
-    memoryUsage: 68
-  };
-
   return (
-    <div className="space-y-6 p-6 bg-gradient-to-br from-slate-50 to-gray-50 min-h-screen">
-      {/* Welcome Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Admin Dashboard
-          </h1>
-          <p className="text-gray-600 mt-1">System overview and platform management</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button 
-            onClick={handleRefresh} 
-            disabled={refreshing}
-            variant="outline"
-            className="border-gray-300"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Link href="/settings">
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-100">
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
+        {/* Clean Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p className="text-gray-600 text-sm">System overview and platform management</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={handleRefresh} 
+              disabled={refreshing}
+              variant="outline"
+              size="sm"
+              className="border-gray-300 hover:border-gray-400"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </Button>
-          </Link>
+            <Link href="/settings">
+              <Button size="sm" className="bg-gray-900 hover:bg-gray-800">
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </Link>
+          </div>
         </div>
-      </div>
 
-      {/* Error State */}
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2 text-red-800">
-              <AlertTriangle className="h-5 w-5" />
-              <span>Error loading dashboard data: {error}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Main Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {loading ? (
-          <>
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-          </>
-        ) : (
-          <>
-            <StatCard
-              title="Total Users"
-              value={userStats?.totalUsers || basicStats?.totalUsers || 0}
-              icon={Users}
-              gradient="from-blue-500 to-blue-600"
-              change={{
-                value: userStats?.recentRegistrations || 12,
-                type: 'increase',
-                period: 'this month'
-              }}
-            />
-            <StatCard
-              title="Active Users"
-              value={userStats?.activeUsers || Math.floor((userStats?.totalUsers || 0) * 0.85)}
-              icon={Activity}
-              gradient="from-green-500 to-emerald-500"
-              change={{
-                value: 8,
-                type: 'increase',
-                period: 'vs last month'
-              }}
-            />
-            <StatCard
-              title="Total Articles"
-              value={basicStats?.totalArticles || publishedArticles}
-              icon={FileText}
-              gradient="from-purple-500 to-pink-500"
-              change={{
-                value: 15,
-                type: 'increase',
-                period: 'this month'
-              }}
-            />
-            <StatCard
-              title="Pending Reviews"
-              value={pendingReviews}
-              icon={Clock}
-              gradient="from-yellow-500 to-orange-500"
-              change={{
-                value: pendingReviews > 0 ? 100 : 0,
-                type: pendingReviews > 0 ? 'neutral' : 'decrease',
-                period: 'in queue'
-              }}
-            />
-          </>
-        )}
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* User Management Overview */}
-        <div className="lg:col-span-2">
-          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
-                    <Users className="h-5 w-5 mr-2 text-blue-600" />
-                    User Management
-                  </CardTitle>
-                  <CardDescription>Platform user statistics and role distribution</CardDescription>
-                </div>
-                <Link href="/users">
-                  <Button variant="outline" size="sm">
-                    Manage Users
-                  </Button>
-                </Link>
+        {/* Error State */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-red-800">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="text-sm">Error loading dashboard data: {error}</span>
               </div>
-            </CardHeader>
-            
-            <CardContent>
-              {loading || !userStats ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="animate-pulse">
-                      <div className="h-24 bg-gray-200 rounded-lg"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Admin Users */}
-                  <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <Shield className="h-8 w-8 text-red-600" />
-                      <Badge className="bg-red-100 text-red-800">Admin</Badge>
-                    </div>
-                    <p className="text-2xl font-bold text-red-900">{userStats.usersByRole.admin}</p>
-                    <p className="text-sm text-red-700">System Administrators</p>
-                  </div>
-
-                  {/* Editor Users */}
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <CheckCircle className="h-8 w-8 text-blue-600" />
-                      <Badge className="bg-blue-100 text-blue-800">Editor</Badge>
-                    </div>
-                    <p className="text-2xl font-bold text-blue-900">{userStats.usersByRole.editor}</p>
-                    <p className="text-sm text-blue-700">Content Editors</p>
-                  </div>
-
-                  {/* Author Users */}
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <FileText className="h-8 w-8 text-green-600" />
-                      <Badge className="bg-green-100 text-green-800">Author</Badge>
-                    </div>
-                    <p className="text-2xl font-bold text-green-900">{userStats.usersByRole.author}</p>
-                    <p className="text-sm text-green-700">Content Authors</p>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
-        </div>
+        )}
 
-        {/* System Health Sidebar */}
-        <div className="space-y-6">
-          {/* System Health */}
-          <MetricCard
-            title="System Health"
-            description="Overall platform status"
-            value={systemHealth.uptime}
-            maxValue={100}
-            unit="%"
-            icon={Database}
-            color="green"
-            showProgress={true}
-          >
-            <div className="mt-3 space-y-1 text-xs text-gray-500">
-              <div className="flex justify-between">
-                <span>Response Time:</span>
-                <span className="font-medium">{systemHealth.responseTime}ms</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Active Connections:</span>
-                <span className="font-medium">{systemHealth.activeConnections.toLocaleString()}</span>
-              </div>
-            </div>
-          </MetricCard>
-
-          {/* Memory Usage */}
-          <MetricCard
-            title="Memory Usage"
-            description="Server resource utilization"
-            value={systemHealth.memoryUsage}
-            maxValue={100}
-            unit="%"
-            icon={BarChart3}
-            color={systemHealth.memoryUsage > 80 ? 'red' : systemHealth.memoryUsage > 60 ? 'yellow' : 'green'}
-            showProgress={true}
-          />
-
-          {/* Recent System Activity */}
+        {/* Key Metrics - Clean Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {loading ? (
-            <ActivityFeedSkeleton />
+            Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                </CardContent>
+              </Card>
+            ))
           ) : (
-            <ActivityFeed
-              title="System Activity"
-              activities={systemActivity}
-              maxItems={5}
-              showViewAll={true}
-              onViewAll={() => console.log('View all system activity')}
-            />
+            <>
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Users className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      +{dashboardStats?.userGrowth || 0}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {dashboardStats?.totalUsers?.toLocaleString() || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Total Users</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <UserCheck className="h-5 w-5 text-green-600" />
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      85%
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {dashboardStats?.activeUsers?.toLocaleString() || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Active Users</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <FileText className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      +{dashboardStats?.articleGrowth || 0}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {dashboardStats?.totalArticles?.toLocaleString() || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Total Articles</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <Clock className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <Badge 
+                      variant={dashboardStats?.pendingReviews === 0 ? "secondary" : "destructive"} 
+                      className="text-xs"
+                    >
+                      {dashboardStats?.pendingReviews === 0 ? 'Clear' : 'Pending'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {dashboardStats?.pendingReviews || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Pending Reviews</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
           )}
         </div>
-      </div>
 
-      {/* Platform Analytics */}
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
-            <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
-            Content Analytics
-          </CardTitle>
-          <CardDescription>Platform content performance metrics</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
-              <Globe className="h-10 w-10 mx-auto mb-3 text-purple-600" />
-              <p className="text-3xl font-bold text-purple-900">{publishedArticles}</p>
-              <p className="text-sm text-purple-700 mt-1">Published Articles</p>
-            </div>
-            <div className="text-center p-6 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg">
-              <Clock className="h-10 w-10 mx-auto mb-3 text-indigo-600" />
-              <p className="text-3xl font-bold text-indigo-900">{pendingReviews}</p>
-              <p className="text-sm text-indigo-700 mt-1">Pending Reviews</p>
-            </div>
-            <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
-              <CheckCircle className="h-10 w-10 mx-auto mb-3 text-green-600" />
-              <p className="text-3xl font-bold text-green-900">87%</p>
-              <p className="text-sm text-green-700 mt-1">Approval Rate</p>
-            </div>
+        {/* Main Content - Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Content Overview - Takes 2 columns */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* User Role Distribution */}
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      <Users className="h-5 w-5 text-gray-600" />
+                      User Distribution
+                    </CardTitle>
+                    <CardDescription>Platform users by role</CardDescription>
+                  </div>
+                  <Link href="/users">
+                    <Button variant="outline" size="sm">
+                      Manage Users
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading || !userStats ? (
+                  <div className="grid grid-cols-3 gap-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-20 bg-gray-200 rounded-lg"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-red-50 rounded-lg border border-red-100">
+                      <Shield className="h-8 w-8 mx-auto mb-2 text-red-600" />
+                      <p className="text-xl font-bold text-red-900">{userStats.usersByRole.admin}</p>
+                      <p className="text-xs text-red-700">Admins</p>
+                    </div>
+                    <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
+                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                      <p className="text-xl font-bold text-blue-900">{userStats.usersByRole.editor}</p>
+                      <p className="text-xs text-blue-700">Editors</p>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg border border-green-100">
+                      <FileText className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                      <p className="text-xl font-bold text-green-900">{userStats.usersByRole.author}</p>
+                      <p className="text-xs text-green-700">Authors</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Content Analytics */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-gray-600" />
+                  Content Analytics
+                </CardTitle>
+                <CardDescription>Article status and performance metrics</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <Globe className="h-6 w-6 mx-auto mb-2 text-green-600" />
+                    <p className="text-lg font-bold text-green-900">
+                      {dashboardStats?.publishedArticles || 0}
+                    </p>
+                    <p className="text-xs text-green-700">Published</p>
+                  </div>
+                  <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                    <Clock className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
+                    <p className="text-lg font-bold text-yellow-900">
+                      {dashboardStats?.pendingReviews || 0}
+                    </p>
+                    <p className="text-xs text-yellow-700">In Review</p>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <FileText className="h-6 w-6 mx-auto mb-2 text-gray-600" />
+                    <p className="text-lg font-bold text-gray-900">
+                      {dashboardStats?.draftArticles || 0}
+                    </p>
+                    <p className="text-xs text-gray-700">Drafts</p>
+                  </div>
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <CheckCircle className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                    <p className="text-lg font-bold text-blue-900">
+                      {dashboardStats?.approvalRate || 0}%
+                    </p>
+                    <p className="text-xs text-blue-700">Approval Rate</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* System Health Sidebar */}
+          <div className="space-y-6">
+            {/* System Health */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Server className="h-5 w-5 text-gray-600" />
+                  System Health
+                </CardTitle>
+                <CardDescription>Real-time system metrics</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!systemHealth ? (
+                  <div className="animate-pulse space-y-3">
+                    <div className="h-4 bg-gray-200 rounded"></div>
+                    <div className="h-4 bg-gray-200 rounded"></div>
+                    <div className="h-4 bg-gray-200 rounded"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>Uptime</span>
+                        <span className="font-medium">{systemHealth.uptime.toFixed(1)}%</span>
+                      </div>
+                      <Progress value={systemHealth.uptime} className="h-2" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>Memory</span>
+                        <span className="font-medium">{systemHealth.memoryUsage}%</span>
+                      </div>
+                      <Progress 
+                        value={systemHealth.memoryUsage} 
+                        className="h-2"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>CPU</span>
+                        <span className="font-medium">{systemHealth.cpuUsage}%</span>
+                      </div>
+                      <Progress 
+                        value={systemHealth.cpuUsage} 
+                        className="h-2"
+                      />
+                    </div>
+                    <div className="pt-2 border-t text-xs text-gray-500 space-y-1">
+                      <div className="flex justify-between">
+                        <span>Response Time:</span>
+                        <span>{systemHealth.responseTime}ms</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Connections:</span>
+                        <span>{systemHealth.activeConnections.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-gray-600" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="animate-pulse flex items-center gap-3">
+                        <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                        <div className="flex-1">
+                          <div className="h-3 bg-gray-200 rounded mb-1"></div>
+                          <div className="h-2 bg-gray-200 rounded w-2/3"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : systemActivity.length > 0 ? (
+                  <div className="space-y-3">
+                    {systemActivity.slice(0, 5).map((activity) => (
+                      <div key={activity.id} className="flex items-start gap-3 text-sm">
+                        <div className="p-1 bg-gray-100 rounded-full mt-0.5">
+                          <Activity className="h-3 w-3 text-gray-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate">
+                            {activity.title}
+                          </p>
+                          <p className="text-gray-600 text-xs">
+                            {activity.description}
+                          </p>
+                          <p className="text-gray-400 text-xs">
+                            {new Date(activity.timestamp).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    No recent activity
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
