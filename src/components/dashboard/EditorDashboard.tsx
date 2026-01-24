@@ -16,7 +16,6 @@ import {
   Eye,
   ThumbsUp,
   MessageSquare,
-  BarChart3
   Tags
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
