@@ -56,4 +56,3 @@ export function useCategories(): UseCategoriesResult {
     getCategoryBySlug,
   };
 }
-
