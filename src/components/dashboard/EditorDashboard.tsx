@@ -9,6 +9,7 @@ import {
   XCircle,
   TrendingUp, 
   Users,
+  BarChart3,
   Calendar,
   Star,
   AlertCircle,
@@ -16,6 +17,7 @@ import {
   ThumbsUp,
   MessageSquare,
   BarChart3
+  Tags
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
