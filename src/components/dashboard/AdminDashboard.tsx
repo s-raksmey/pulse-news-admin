@@ -13,367 +13,403 @@ import {
   Clock,
   BarChart3,
   Settings,
-  Loader2
+  RefreshCw,
+  Database,
+  Globe,
+  Zap
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import { useUserManagement, UserStats } from '@/hooks/useUserManagement';
 import { useArticles } from '@/hooks/useGraphQL';
+import { 
+  StatCard, 
+  MetricCard, 
+  ActivityFeed, 
+  StatCardSkeleton, 
+  MetricCardSkeleton,
+  ActivityFeedSkeleton,
+  type ActivityItem 
+} from './shared';
 
-interface AdminDashboardProps {}
-
-export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
-  const { getUserStats, getBasicStats, loading: userLoading, error: userError } = useUserManagement();
+export const AdminDashboard: React.FC = () => {
+  const { getUserStats, getBasicStats, getUserActivity, loading: userLoading, error: userError } = useUserManagement();
   const { getArticles, loading: articlesLoading, error: articlesError } = useArticles();
   
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [basicStats, setBasicStats] = useState<{ totalUsers: number; totalArticles: number } | null>(null);
   const [publishedArticles, setPublishedArticles] = useState<number>(0);
   const [pendingReviews, setPendingReviews] = useState<number>(0);
+  const [systemActivity, setSystemActivity] = useState<ActivityItem[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadDashboardData = async () => {
+    try {
+      // Fetch user statistics
+      const userStatsData = await getUserStats();
+      if (userStatsData) {
+        setUserStats(userStatsData);
+      }
+
+      // Fetch basic stats as fallback
+      const basicStatsData = await getBasicStats();
+      if (basicStatsData) {
+        setBasicStats(basicStatsData);
+      }
+
+      // Fetch published articles count
+      const publishedData = await getArticles({ status: 'PUBLISHED', take: 1000 });
+      if (publishedData?.articles) {
+        setPublishedArticles(publishedData.articles.length);
+      }
+
+      // Fetch pending reviews count
+      const pendingData = await getArticles({ status: 'PENDING', take: 1000 });
+      if (pendingData?.articles) {
+        setPendingReviews(pendingData.articles.length);
+      }
+
+      // Fetch recent system activity
+      const activityData = await getUserActivity(undefined, 10);
+      if (activityData) {
+        const transformedActivity: ActivityItem[] = activityData.map(activity => ({
+          id: activity.id,
+          type: activity.activityType.toLowerCase() as any,
+          title: activity.details?.title || `${activity.activityType} activity`,
+          description: activity.details?.description || `by ${activity.user?.name || 'System'}`,
+          user: activity.user ? { name: activity.user.name } : undefined,
+          timestamp: activity.timestamp,
+          metadata: {
+            category: 'System'
+          }
+        }));
+        setSystemActivity(transformedActivity);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch user statistics
-        const userStatsData = await getUserStats();
-        if (userStatsData) {
-          setUserStats(userStatsData);
-        }
+    loadDashboardData();
+  }, []);
 
-        // Fetch basic stats as fallback
-        const basicStatsData = await getBasicStats();
-        if (basicStatsData) {
-          setBasicStats(basicStatsData);
-        }
-
-        // Fetch published articles count
-        const publishedArticlesData = await getArticles({ status: 'PUBLISHED', take: 1000 });
-        if (publishedArticlesData?.articles) {
-          setPublishedArticles(publishedArticlesData.articles.length);
-        }
-
-        // Fetch pending reviews count
-        const pendingReviewsData = await getArticles({ status: 'REVIEW', take: 1000 });
-        if (pendingReviewsData?.articles) {
-          setPendingReviews(pendingReviewsData.articles.length);
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      }
-    };
-
-    fetchData();
-  }, [getUserStats, getBasicStats, getArticles]);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadDashboardData();
+    setRefreshing(false);
+  };
 
   const loading = userLoading || articlesLoading;
   const error = userError || articlesError;
 
-  // Use real data if available, otherwise fallback to mock data
-  const stats = {
-    totalUsers: userStats?.totalUsers || basicStats?.totalUsers || 156,
-    activeUsers: userStats?.activeUsers || 142,
-    totalArticles: basicStats?.totalArticles || 1247,
-    publishedArticles: publishedArticles || 1089,
-    pendingReviews: pendingReviews || 23,
-    systemHealth: 98, // This would come from a system health check
-    todayLogins: 89, // This would come from activity logs
-    todayArticles: 12, // This would come from today's articles
+  // Mock system health data (would come from backend monitoring)
+  const systemHealth = {
+    uptime: 99.9,
+    responseTime: 145,
+    activeConnections: 1247,
+    memoryUsage: 68
   };
-  const recentActivities = [
-    { id: 1, user: 'John Editor', action: 'Published article', target: 'Breaking News Update', time: '2 minutes ago', type: 'publish' },
-    { id: 2, user: 'Sarah Author', action: 'Submitted for review', target: 'Tech Trends 2024', time: '15 minutes ago', type: 'review' },
-    { id: 3, user: 'Mike Admin', action: 'Created user', target: 'jane.doe@example.com', time: '1 hour ago', type: 'user' },
-    { id: 4, user: 'Lisa Editor', action: 'Rejected article', target: 'Opinion Piece', time: '2 hours ago', type: 'reject' },
-    { id: 5, user: 'Tom Author', action: 'Updated article', target: 'Market Analysis', time: '3 hours ago', type: 'update' },
-  ];
-
-  const systemAlerts = [
-    { id: 1, type: 'warning', message: 'High number of pending reviews', count: stats.pendingReviews },
-    { id: 2, type: 'info', message: 'System backup completed successfully', time: '6 hours ago' },
-    { id: 3, type: 'success', message: 'All security checks passed', time: '1 day ago' },
-  ];
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'publish': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'review': return <Clock className="h-4 w-4 text-yellow-600" />;
-      case 'user': return <Users className="h-4 w-4 text-blue-600" />;
-      case 'reject': return <AlertTriangle className="h-4 w-4 text-red-600" />;
-      case 'update': return <FileText className="h-4 w-4 text-gray-600" />;
-      default: return <Activity className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getAlertIcon = (type: string) => {
-    switch (type) {
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      case 'success': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'info': return <Activity className="h-4 w-4 text-blue-600" />;
-      default: return <Activity className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-6 w-6 animate-spin" />
-            <span className="text-lg">Loading dashboard data...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
-            <p className="text-gray-600">{error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen">
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-1">Complete system overview and management</p>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            Admin Dashboard
+          </h1>
+          <p className="text-gray-600 mt-2 text-lg">System overview and platform management</p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/users/new">
-            <Button className="gap-2">
-              <Users className="h-4 w-4" />
-              Add User
-            </Button>
-          </Link>
+        <div className="flex items-center space-x-3">
+          <Button 
+            onClick={handleRefresh} 
+            disabled={refreshing}
+            variant="outline"
+            className="border-blue-200 text-blue-600 hover:bg-blue-50"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Link href="/settings">
-            <Button variant="outline" className="gap-2">
-              <Settings className="h-4 w-4" />
+            <Button className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600">
+              <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+{stats.activeUsers}</span> active users
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Articles</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalArticles}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">{stats.publishedArticles}</span> published
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Reviews</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingReviews}</div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting editorial review
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Health</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.systemHealth}%</div>
-            <Progress value={stats.systemHealth} className="mt-2" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Today's Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Today's Activity
-            </CardTitle>
-            <CardDescription>
-              Key metrics for today
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-blue-600" />
-                <span className="text-sm">User Logins</span>
-              </div>
-              <Badge variant="secondary">{stats.todayLogins}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-green-600" />
-                <span className="text-sm">Articles Published</span>
-              </div>
-              <Badge variant="secondary">{stats.todayArticles}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm">Reviews Pending</span>
-              </div>
-              <Badge variant="secondary">{stats.pendingReviews}</Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+      {/* Error State */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2 text-red-800">
               <AlertTriangle className="h-5 w-5" />
-              System Alerts
-            </CardTitle>
-            <CardDescription>
-              Important notifications and warnings
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {systemAlerts.map((alert) => (
-              <div key={alert.id} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
-                {getAlertIcon(alert.type)}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
-                    {alert.message}
-                  </p>
-                  {alert.count && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      {alert.count} items require attention
-                    </p>
-                  )}
-                  {alert.time && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      {alert.time}
-                    </p>
-                  )}
+              <span>Error loading dashboard data: {error}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Main Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {loading ? (
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Total Users"
+              value={userStats?.totalUsers || basicStats?.totalUsers || 0}
+              icon={Users}
+              gradient="from-blue-500 to-blue-600"
+              change={{
+                value: userStats?.recentRegistrations || 12,
+                type: 'increase',
+                period: 'this month'
+              }}
+            />
+            <StatCard
+              title="Active Users"
+              value={userStats?.activeUsers || Math.floor((userStats?.totalUsers || 0) * 0.85)}
+              icon={Activity}
+              gradient="from-green-500 to-emerald-500"
+              change={{
+                value: 8,
+                type: 'increase',
+                period: 'vs last month'
+              }}
+            />
+            <StatCard
+              title="Total Articles"
+              value={basicStats?.totalArticles || publishedArticles}
+              icon={FileText}
+              gradient="from-purple-500 to-pink-500"
+              change={{
+                value: 15,
+                type: 'increase',
+                period: 'this month'
+              }}
+            />
+            <StatCard
+              title="Pending Reviews"
+              value={pendingReviews}
+              icon={Clock}
+              gradient="from-yellow-500 to-orange-500"
+              change={{
+                value: pendingReviews > 0 ? 100 : 0,
+                type: pendingReviews > 0 ? 'neutral' : 'decrease',
+                period: 'in queue'
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* User Management Overview */}
+        <div className="lg:col-span-2">
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
+                    <Users className="h-5 w-5 mr-2 text-blue-600" />
+                    User Management
+                  </CardTitle>
+                  <CardDescription>Platform user statistics and role distribution</CardDescription>
                 </div>
+                <Link href="/users">
+                  <Button variant="outline" size="sm">
+                    Manage Users
+                  </Button>
+                </Link>
               </div>
-            ))}
+            </CardHeader>
+            
+            <CardContent>
+              {loading || !userStats ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="h-24 bg-gray-200 rounded-lg"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Admin Users */}
+                  <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <Shield className="h-8 w-8 text-red-600" />
+                      <Badge className="bg-red-100 text-red-800">Admin</Badge>
+                    </div>
+                    <p className="text-2xl font-bold text-red-900">{userStats.usersByRole.admin}</p>
+                    <p className="text-sm text-red-700">System Administrators</p>
+                  </div>
+
+                  {/* Editor Users */}
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <CheckCircle className="h-8 w-8 text-blue-600" />
+                      <Badge className="bg-blue-100 text-blue-800">Editor</Badge>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-900">{userStats.usersByRole.editor}</p>
+                    <p className="text-sm text-blue-700">Content Editors</p>
+                  </div>
+
+                  {/* Author Users */}
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <FileText className="h-8 w-8 text-green-600" />
+                      <Badge className="bg-green-100 text-green-800">Author</Badge>
+                    </div>
+                    <p className="text-2xl font-bold text-green-900">{userStats.usersByRole.author}</p>
+                    <p className="text-sm text-green-700">Content Authors</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* System Health Sidebar */}
+        <div className="space-y-6">
+          {/* System Health */}
+          <MetricCard
+            title="System Health"
+            description="Overall platform status"
+            value={systemHealth.uptime}
+            maxValue={100}
+            unit="%"
+            icon={Database}
+            color="green"
+            showProgress={true}
+          >
+            <div className="mt-3 space-y-1 text-xs text-gray-500">
+              <div className="flex justify-between">
+                <span>Response Time:</span>
+                <span className="font-medium">{systemHealth.responseTime}ms</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Active Connections:</span>
+                <span className="font-medium">{systemHealth.activeConnections.toLocaleString()}</span>
+              </div>
+            </div>
+          </MetricCard>
+
+          {/* Memory Usage */}
+          <MetricCard
+            title="Memory Usage"
+            description="Server resource utilization"
+            value={systemHealth.memoryUsage}
+            maxValue={100}
+            unit="%"
+            icon={BarChart3}
+            color={systemHealth.memoryUsage > 80 ? 'red' : systemHealth.memoryUsage > 60 ? 'yellow' : 'green'}
+            showProgress={true}
+          />
+
+          {/* Recent System Activity */}
+          {loading ? (
+            <ActivityFeedSkeleton />
+          ) : (
+            <ActivityFeed
+              title="System Activity"
+              activities={systemActivity}
+              maxItems={5}
+              showViewAll={true}
+              onViewAll={() => console.log('View all system activity')}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Platform Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Content Statistics */}
+        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
+              <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
+              Content Analytics
+            </CardTitle>
+            <CardDescription>Platform content performance metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
+                <Globe className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                <p className="text-2xl font-bold text-purple-900">{publishedArticles}</p>
+                <p className="text-sm text-purple-700">Published Articles</p>
+              </div>
+              <div className="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg">
+                <Clock className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
+                <p className="text-2xl font-bold text-indigo-900">{pendingReviews}</p>
+                <p className="text-sm text-indigo-700">Pending Reviews</p>
+              </div>
+            </div>
+            
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Content Approval Rate</span>
+                <span className="font-semibold text-gray-900">87%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full" style={{ width: '87%' }}></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
+              <Zap className="h-5 w-5 mr-2 text-yellow-600" />
+              Quick Actions
+            </CardTitle>
+            <CardDescription>Common administrative tasks</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-3">
+              <Link href="/users">
+                <Button variant="outline" className="w-full justify-start h-12">
+                  <Users className="h-4 w-4 mr-3" />
+                  Manage Users
+                </Button>
+              </Link>
+              <Link href="/articles">
+                <Button variant="outline" className="w-full justify-start h-12">
+                  <FileText className="h-4 w-4 mr-3" />
+                  Review Articles
+                </Button>
+              </Link>
+              <Link href="/settings">
+                <Button variant="outline" className="w-full justify-start h-12">
+                  <Settings className="h-4 w-4 mr-3" />
+                  System Settings
+                </Button>
+              </Link>
+              <Link href="/analytics">
+                <Button variant="outline" className="w-full justify-start h-12">
+                  <TrendingUp className="h-4 w-4 mr-3" />
+                  View Analytics
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            Recent Activity
-          </CardTitle>
-          <CardDescription>
-            Latest user actions across the system
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                {getActivityIcon(activity.type)}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
-                    <span className="font-semibold">{activity.user}</span> {activity.action}
-                  </p>
-                  <p className="text-sm text-gray-600 truncate">
-                    {activity.target}
-                  </p>
-                </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap">
-                  {activity.time}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 pt-4 border-t">
-            <Link href="/audit">
-              <Button variant="outline" className="w-full gap-2">
-                <BarChart3 className="h-4 w-4" />
-                View Full Audit Log
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
-            Common administrative tasks
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link href="/users/new">
-              <Button variant="outline" className="w-full gap-2 h-auto py-4 flex-col">
-                <Users className="h-6 w-6" />
-                <span className="text-sm">Add User</span>
-              </Button>
-            </Link>
-            <Link href="/review">
-              <Button variant="outline" className="w-full gap-2 h-auto py-4 flex-col">
-                <Clock className="h-6 w-6" />
-                <span className="text-sm">Review Queue</span>
-              </Button>
-            </Link>
-            <Link href="/settings">
-              <Button variant="outline" className="w-full gap-2 h-auto py-4 flex-col">
-                <Settings className="h-6 w-6" />
-                <span className="text-sm">Settings</span>
-              </Button>
-            </Link>
-            <Link href="/audit">
-              <Button variant="outline" className="w-full gap-2 h-auto py-4 flex-col">
-                <Shield className="h-6 w-6" />
-                <span className="text-sm">Audit Logs</span>
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
 
-export default AdminDashboard;
