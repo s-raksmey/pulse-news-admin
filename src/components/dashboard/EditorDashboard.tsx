@@ -150,19 +150,20 @@ export const EditorDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="space-y-6 p-6 bg-gradient-to-br from-slate-50 to-gray-50 min-h-screen">
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold text-gray-900">
             Editorial Dashboard
           </h1>
-          <p className="text-gray-600 mt-2 text-lg">Content review and editorial management</p>
+          <p className="text-gray-600 mt-1">Content review and editorial management</p>
         </div>
         <Button 
           onClick={handleRefresh} 
           disabled={refreshing}
-          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+          variant="outline"
+          className="border-gray-300"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
           Refresh
@@ -182,7 +183,7 @@ export const EditorDashboard: React.FC = () => {
       )}
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {loading || !stats ? (
           <>
             <StatCardSkeleton />
@@ -192,50 +193,42 @@ export const EditorDashboard: React.FC = () => {
           </>
         ) : (
           <>
-            <StatCard
-              title="Pending Reviews"
-              value={stats.pendingReviews}
-              icon={Clock}
-              gradient="from-orange-500 to-red-500"
-              change={{
-                value: 12,
-                type: 'increase',
-                period: 'vs yesterday'
-              }}
-            />
-            <StatCard
-              title="Approved Today"
-              value={stats.approvedToday}
-              icon={CheckCircle}
-              gradient="from-green-500 to-emerald-500"
-              change={{
-                value: 8,
-                type: 'increase',
-                period: 'vs yesterday'
-              }}
-            />
-            <StatCard
-              title="Published This Week"
-              value={stats.publishedThisWeek}
-              icon={Eye}
-              gradient="from-blue-500 to-cyan-500"
-              change={{
-                value: 15,
-                type: 'increase',
-                period: 'vs last week'
-              }}
-            />
-            <StatCard
-              title="Featured Articles"
-              value={stats.featuredArticles}
-              icon={Star}
-              gradient="from-yellow-500 to-orange-500"
-              change={{
-                value: 5,
-                type: 'neutral',
-                period: 'this month'
-              }}
-            />
+            <Card className="p-4 bg-white border border-gray-200 hover:shadow-sm transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Pending Reviews</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.pendingReviews}</p>
+                </div>
+                <Clock className="h-8 w-8 text-orange-500" />
+              </div>
+            </Card>
+            <Card className="p-4 bg-white border border-gray-200 hover:shadow-sm transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Approved Today</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.approvedToday}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-500" />
+              </div>
+            </Card>
+            <Card className="p-4 bg-white border border-gray-200 hover:shadow-sm transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Published This Week</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.publishedThisWeek}</p>
+                </div>
+                <Eye className="h-8 w-8 text-blue-500" />
+              </div>
+            </Card>
+            <Card className="p-4 bg-white border border-gray-200 hover:shadow-sm transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Featured Articles</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.featuredArticles}</p>
+                </div>
+                <Star className="h-8 w-8 text-yellow-500" />
+              </div>
+            </Card>
           </>
         )}
       </div>
@@ -452,4 +445,3 @@ export const EditorDashboard: React.FC = () => {
     </div>
   );
 };
-
