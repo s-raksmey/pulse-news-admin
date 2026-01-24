@@ -5,7 +5,7 @@ export type {
   SettingType
 } from '../services/settings.gql';
 
-export { SettingType, SETTING_CATEGORIES } from '../services/settings.gql';
+export { SETTING_CATEGORIES } from '../services/settings.gql';
 
 // Additional types for the UI components
 export interface SettingFormData {

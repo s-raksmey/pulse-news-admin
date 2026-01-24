@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MEGA_NAV } from "@/data/mega-nav";
+import { useCategories } from "@/hooks/useCategories";
 
 import type { OutputData } from "@editorjs/editorjs";
 import type { NewsEditorRef } from "@/components/editor/news-editor";
@@ -51,9 +52,13 @@ export default function EditArticlePage() {
 
   const client = useMemo(() => getAuthenticatedGqlClient(), []);
   const editorRef = useRef<NewsEditorRef>(null);
+  
+  // Category validation hook
+  const { categories, loading: categoriesLoading, error: categoriesError, isValidCategory } = useCategories();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -133,6 +138,13 @@ export default function EditArticlePage() {
      Actions
   ------------------------- */
   async function upsertArticle(nextStatus = status, redirectToList = false) {
+    // Validate category exists in database
+    setValidationError(null);
+    if (!categoriesLoading && !isValidCategory(categorySlug)) {
+      setValidationError(`Category "${categorySlug}" does not exist in the database. Please select a valid category.`);
+      return;
+    }
+
     setSaving(true);
     try {
       const contentJson = (await editorRef.current?.save()) ?? { blocks: [] };
@@ -293,6 +305,31 @@ export default function EditArticlePage() {
             </select>
           </div>
         </div>
+
+        {/* Error Display */}
+        {categoriesError && (
+          <div className="rounded-md border border-red-200 bg-red-50 p-3">
+            <p className="text-sm text-red-600">
+              <strong>Category Error:</strong> {categoriesError}
+            </p>
+          </div>
+        )}
+        
+        {validationError && (
+          <div className="rounded-md border border-red-200 bg-red-50 p-3">
+            <p className="text-sm text-red-600">
+              <strong>Validation Error:</strong> {validationError}
+            </p>
+          </div>
+        )}
+
+        {categoriesLoading && (
+          <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+            <p className="text-sm text-blue-600">
+              Loading categories...
+            </p>
+          </div>
+        )}
 
         <div className="grid gap-2 sm:w-1/2">
           <label className="text-xs font-semibold text-slate-600">Status</label>
