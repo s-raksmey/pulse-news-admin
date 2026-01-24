@@ -1,118 +1,14 @@
 // src/app/users/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import UserStats from '../../components/user-management/UserStats';
-import UserFilters from '../../components/user-management/UserFilters';
-import UserList from '../../components/user-management/UserList';
-import { UserService } from '../../services/user.gql';
-import { useAuth } from '../../contexts/AuthContext';
-import type { UserFilters as UserFiltersType } from '../../types/user';
+import React from 'react';
+import { UserList } from '@/components/users/UserList';
+import { PermissionGuard } from '@/components/auth/PermissionGuard';
 
 export default function UsersPage() {
-  const router = useRouter();
-  const { user, isLoading } = useAuth();
-  const [filters, setFilters] = useState<UserFiltersType>({
-    search: '',
-    role: 'ALL',
-    status: 'ALL',
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-  });
-  const [statsAvailable, setStatsAvailable] = useState<boolean | null>(null);
-
-  const handleFiltersChange = (newFilters: UserFiltersType) => {
-    setFilters(newFilters);
-  };
-
-  const handleClearFilters = () => {
-    setFilters({
-      search: '',
-      role: 'ALL',
-      status: 'ALL',
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
-    });
-  };
-
-  useEffect(() => {
-    // Check user authorization with robust role checking
-    if (!isLoading && user) {
-      const userRole = user.role?.toString().toUpperCase();
-      if (userRole !== 'ADMIN') {
-        // Redirect non-admin users to dashboard immediately
-        router.replace('/');
-        return;
-      }
-    }
-
-    // Only proceed with admin-specific logic if user is confirmed ADMIN
-    if (!isLoading && user && user.role?.toString().toUpperCase() === 'ADMIN') {
-      // Check if getUserStats is available on component mount
-      const checkStatsAvailability = async () => {
-        try {
-          const available = await UserService.checkGetUserStatsAvailability();
-          setStatsAvailable(available);
-        } catch (error) {
-          console.error('Failed to check stats availability:', error);
-          setStatsAvailable(false);
-        }
-      };
-      
-      checkStatsAvailability();
-    }
-  }, [user, isLoading, router]);
-
-  // Show loading state while checking authentication
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show access denied for non-admin users (shouldn't reach here due to redirect, but just in case)
-  if (user && user.role?.toString().toUpperCase() !== 'ADMIN') {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-600">You don't have permission to access this page.</p>
-          <p className="text-sm text-gray-500 mt-2">Current role: {user.role}</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">
-          Users
-        </h1>
-        <p className="text-slate-600">
-          Manage user accounts, roles, and permissions across your news platform.
-        </p>
-      </div>
-
-      {/* User Statistics */}
-      <UserStats />
-
-      {/* Filters */}
-      <UserFilters
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        onClearFilters={handleClearFilters}
-      />
-
-      {/* User List */}
-      <UserList filters={filters} />
-    </div>
+    <PermissionGuard requiredPermissions={['users.list']}>
+      <UserList />
+    </PermissionGuard>
   );
 }

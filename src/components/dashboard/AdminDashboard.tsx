@@ -1,7 +1,7 @@
 // src/components/dashboard/AdminDashboard.tsx
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Users, 
   FileText, 
@@ -12,39 +12,76 @@ import {
   CheckCircle,
   Clock,
   BarChart3,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
+import { useUserManagement, UserStats } from '@/hooks/useUserManagement';
+import { useArticles } from '@/hooks/useGraphQL';
 
-interface AdminDashboardProps {
-  stats?: {
-    totalUsers: number;
-    activeUsers: number;
-    totalArticles: number;
-    publishedArticles: number;
-    pendingReviews: number;
-    systemHealth: number;
-    todayLogins: number;
-    todayArticles: number;
+interface AdminDashboardProps {}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
+  const { getUserStats, getBasicStats, loading: userLoading, error: userError } = useUserManagement();
+  const { getArticles, loading: articlesLoading, error: articlesError } = useArticles();
+  
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [basicStats, setBasicStats] = useState<{ totalUsers: number; totalArticles: number } | null>(null);
+  const [publishedArticles, setPublishedArticles] = useState<number>(0);
+  const [pendingReviews, setPendingReviews] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch user statistics
+        const userStatsData = await getUserStats();
+        if (userStatsData) {
+          setUserStats(userStatsData);
+        }
+
+        // Fetch basic stats as fallback
+        const basicStatsData = await getBasicStats();
+        if (basicStatsData) {
+          setBasicStats(basicStatsData);
+        }
+
+        // Fetch published articles count
+        const publishedArticlesData = await getArticles({ status: 'PUBLISHED', take: 1000 });
+        if (publishedArticlesData?.articles) {
+          setPublishedArticles(publishedArticlesData.articles.length);
+        }
+
+        // Fetch pending reviews count
+        const pendingReviewsData = await getArticles({ status: 'REVIEW', take: 1000 });
+        if (pendingReviewsData?.articles) {
+          setPendingReviews(pendingReviewsData.articles.length);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      }
+    };
+
+    fetchData();
+  }, [getUserStats, getBasicStats, getArticles]);
+
+  const loading = userLoading || articlesLoading;
+  const error = userError || articlesError;
+
+  // Use real data if available, otherwise fallback to mock data
+  const stats = {
+    totalUsers: userStats?.totalUsers || basicStats?.totalUsers || 156,
+    activeUsers: userStats?.activeUsers || 142,
+    totalArticles: basicStats?.totalArticles || 1247,
+    publishedArticles: publishedArticles || 1089,
+    pendingReviews: pendingReviews || 23,
+    systemHealth: 98, // This would come from a system health check
+    todayLogins: 89, // This would come from activity logs
+    todayArticles: 12, // This would come from today's articles
   };
-}
-
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
-  stats = {
-    totalUsers: 156,
-    activeUsers: 142,
-    totalArticles: 1247,
-    publishedArticles: 1089,
-    pendingReviews: 23,
-    systemHealth: 98,
-    todayLogins: 89,
-    todayArticles: 12,
-  }
-}) => {
   const recentActivities = [
     { id: 1, user: 'John Editor', action: 'Published article', target: 'Breaking News Update', time: '2 minutes ago', type: 'publish' },
     { id: 2, user: 'Sarah Author', action: 'Submitted for review', target: 'Tech Trends 2024', time: '15 minutes ago', type: 'review' },
@@ -78,6 +115,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       default: return <Activity className="h-4 w-4 text-gray-600" />;
     }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span className="text-lg">Loading dashboard data...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
+            <p className="text-gray-600">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -311,4 +377,3 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 };
 
 export default AdminDashboard;
-
