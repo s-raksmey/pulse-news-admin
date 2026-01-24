@@ -3,11 +3,11 @@
 
 import React from 'react';
 import { UserList } from '@/components/users/UserList';
-import { PermissionGuard } from '@/components/auth/PermissionGuard';
+import { PermissionGuard, Permission } from '@/components/permissions/PermissionGuard';
 
 export default function UsersPage() {
   return (
-    <PermissionGuard requiredPermissions={['users.list']}>
+    <PermissionGuard permissions={[Permission.VIEW_ALL_USERS]} showError>
       <UserList />
     </PermissionGuard>
   );
