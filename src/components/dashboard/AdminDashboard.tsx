@@ -34,7 +34,14 @@ import {
   X,
   ThumbsUp,
   MessageCircle,
-  Target
+  Target,
+  Filter,
+  Search,
+  BookOpen,
+  CheckSquare,
+  XCircle,
+  AlertCircle,
+  TrendingDown
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -95,6 +102,33 @@ interface DashboardStats {
     status: 'published' | 'draft' | 'pending' | 'rejected';
     updatedAt: string;
     views?: number;
+  }>;
+  // Editor-specific properties
+  articlesReviewed?: number;
+  articlesApproved?: number;
+  articlesRejected?: number;
+  featuredArticles?: number;
+  breakingNewsCount?: number;
+  editorsPickCount?: number;
+  averageReviewTime?: number;
+  weeklyReviews?: number;
+  monthlyApprovals?: number;
+  qualityScore?: number;
+  pendingQueue?: Array<{
+    id: string;
+    title: string;
+    author: string;
+    submittedAt: string;
+    priority: 'high' | 'medium' | 'low';
+    category: string;
+  }>;
+  recentReviews?: Array<{
+    id: string;
+    title: string;
+    author: string;
+    action: 'approved' | 'rejected' | 'featured';
+    reviewedAt: string;
+    category: string;
   }>;
 }
 
@@ -212,6 +246,101 @@ export const AdminDashboard: React.FC = () => {
             status: 'published' as const,
             updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
             views: 2100
+          }
+        ],
+        // Editor-specific mock data (in real app, this would come from editorial API)
+        articlesReviewed: 45 + Math.floor(Math.random() * 20), // 45-65 reviewed
+        articlesApproved: 35 + Math.floor(Math.random() * 15), // 35-50 approved
+        articlesRejected: 8 + Math.floor(Math.random() * 7), // 8-15 rejected
+        featuredArticles: 12 + Math.floor(Math.random() * 8), // 12-20 featured
+        breakingNewsCount: 3 + Math.floor(Math.random() * 4), // 3-7 breaking news
+        editorsPickCount: 8 + Math.floor(Math.random() * 5), // 8-13 editor's picks
+        averageReviewTime: 2.5 + Math.random() * 2, // 2.5-4.5 hours
+        weeklyReviews: 12 + Math.floor(Math.random() * 8), // 12-20 this week
+        monthlyApprovals: 28 + Math.floor(Math.random() * 12), // 28-40 this month
+        qualityScore: 85 + Math.floor(Math.random() * 10), // 85-95% quality score
+        pendingQueue: [
+          {
+            id: 'p1',
+            title: 'Breaking: New Technology Breakthrough in AI',
+            author: 'John Smith',
+            submittedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            priority: 'high' as const,
+            category: 'Technology'
+          },
+          {
+            id: 'p2',
+            title: 'Market Analysis: Q4 Financial Trends',
+            author: 'Sarah Johnson',
+            submittedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+            priority: 'medium' as const,
+            category: 'Finance'
+          },
+          {
+            id: 'p3',
+            title: 'Health & Wellness: Winter Fitness Tips',
+            author: 'Mike Davis',
+            submittedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+            priority: 'low' as const,
+            category: 'Health'
+          },
+          {
+            id: 'p4',
+            title: 'Climate Change Impact on Agriculture',
+            author: 'Emma Wilson',
+            submittedAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+            priority: 'medium' as const,
+            category: 'Environment'
+          },
+          {
+            id: 'p5',
+            title: 'Sports Update: Championship Results',
+            author: 'Tom Brown',
+            submittedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+            priority: 'high' as const,
+            category: 'Sports'
+          }
+        ],
+        recentReviews: [
+          {
+            id: 'r1',
+            title: 'Understanding Modern Web Development Trends',
+            author: 'Alex Chen',
+            action: 'approved' as const,
+            reviewedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+            category: 'Technology'
+          },
+          {
+            id: 'r2',
+            title: 'Investment Strategies for 2024',
+            author: 'Lisa Park',
+            action: 'featured' as const,
+            reviewedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+            category: 'Finance'
+          },
+          {
+            id: 'r3',
+            title: 'Outdated Marketing Practices',
+            author: 'David Lee',
+            action: 'rejected' as const,
+            reviewedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+            category: 'Marketing'
+          },
+          {
+            id: 'r4',
+            title: 'Sustainable Living Guide',
+            author: 'Rachel Green',
+            action: 'approved' as const,
+            reviewedAt: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
+            category: 'Lifestyle'
+          },
+          {
+            id: 'r5',
+            title: 'Global Economic Outlook',
+            author: 'James Miller',
+            action: 'featured' as const,
+            reviewedAt: new Date(Date.now() - 9 * 60 * 60 * 1000).toISOString(),
+            category: 'Economics'
           }
         ]
       };
@@ -732,6 +861,7 @@ export const AdminDashboard: React.FC = () => {
   const renderEditorDashboard = () => (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-7xl mx-auto p-6 space-y-8">
+        {/* Editor Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -745,12 +875,134 @@ export const AdminDashboard: React.FC = () => {
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
+            {hasPermission(Permission.REVIEW_ARTICLES) && (
+              <Link href="/articles/review">
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                  <Search className="h-4 w-4 mr-2" />
+                  Review Queue
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
+
+        {/* Error State */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-red-800">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="text-sm">Error loading dashboard data: {error}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Editor Key Metrics */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <>
+              {/* Articles Reviewed */}
+              <Card className="hover:shadow-md transition-shadow border-blue-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <CheckCircle className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                      Total
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {dashboardStats?.articlesReviewed || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Articles Reviewed</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Articles Approved */}
+              <Card className="hover:shadow-md transition-shadow border-green-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <CheckSquare className="h-5 w-5 text-green-600" />
+                    </div>
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                      Approved
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {dashboardStats?.articlesApproved || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Approved</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Pending Reviews */}
+              <Card className="hover:shadow-md transition-shadow border-orange-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <Clock className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <Badge 
+                      variant={dashboardStats?.pendingReviews > 0 ? "default" : "secondary"} 
+                      className="text-xs"
+                    >
+                      {dashboardStats?.pendingReviews > 0 ? 'Pending' : 'Clear'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {dashboardStats?.pendingReviews || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Pending Review</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Featured Articles */}
+              <Card className="hover:shadow-md transition-shadow border-purple-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <Star className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
+                      Featured
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {dashboardStats?.featuredArticles || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Featured</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+
+        {/* Placeholder for main content - will be added in next step */}
         <div className="text-center py-20">
           <CheckCircle className="h-16 w-16 mx-auto mb-4 text-blue-600" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Editor Dashboard</h2>
-          <p className="text-gray-600">Editorial workflow and content management tools coming soon...</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Editor Dashboard Content</h2>
+          <p className="text-gray-600">Main content sections will be added next...</p>
         </div>
       </div>
     </div>
