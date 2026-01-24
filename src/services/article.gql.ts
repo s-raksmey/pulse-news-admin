@@ -131,16 +131,6 @@ export const Q_ARTICLE_BY_SLUG = /* GraphQL */ `
   }
 `;
 
-export const Q_CATEGORIES = /* GraphQL */ `
-  query Categories {
-    categories {
-      id
-      name
-      slug
-    }
-  }
-`;
-
 /* =========================
    Mutations
 ========================= */
