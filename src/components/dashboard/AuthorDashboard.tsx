@@ -1,7 +1,7 @@
 // src/components/dashboard/AuthorDashboard.tsx
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   FileText, 
   Clock, 
@@ -15,454 +15,474 @@ import {
   Award,
   BookOpen,
   PlusCircle,
-  Image
+  RefreshCw,
+  BarChart3,
+  Zap,
+  TrendingDown
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
+import { useAuthorStats } from '@/hooks/useAuthorStats';
+import { 
+  StatCard, 
+  MetricCard, 
+  ActivityFeed, 
+  StatCardSkeleton, 
+  MetricCardSkeleton,
+  ActivityFeedSkeleton,
+  type ActivityItem 
+} from './shared';
 
-interface AuthorDashboardProps {
-  stats?: {
-    totalArticles: number;
-    publishedArticles: number;
-    draftArticles: number;
-    inReviewArticles: number;
-    rejectedArticles: number;
-    totalViews: number;
-    monthlyGoal: number;
-    monthlyProgress: number;
-    approvalRate: number;
+export const AuthorDashboard: React.FC = () => {
+  const {
+    loading,
+    error,
+    getAuthorStats,
+    getAuthorArticles,
+    getAuthorInsights,
+    getWritingGoals
+  } = useAuthorStats();
+
+  const [stats, setStats] = useState<any>(null);
+  const [articles, setArticles] = useState<any[]>([]);
+  const [insights, setInsights] = useState<any>(null);
+  const [goals, setGoals] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Load dashboard data
+  const loadDashboardData = async () => {
+    try {
+      const [statsData, articlesData, insightsData, goalsData] = await Promise.all([
+        getAuthorStats(),
+        getAuthorArticles(10),
+        getAuthorInsights(),
+        getWritingGoals()
+      ]);
+
+      setStats(statsData);
+      setArticles(articlesData);
+      setInsights(insightsData);
+      setGoals(goalsData);
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+    }
   };
-}
 
-export const AuthorDashboard: React.FC<AuthorDashboardProps> = ({ 
-  stats = {
-    totalArticles: 24,
-    publishedArticles: 18,
-    draftArticles: 4,
-    inReviewArticles: 2,
-    rejectedArticles: 3,
-    totalViews: 15420,
-    monthlyGoal: 8,
-    monthlyProgress: 6,
-    approvalRate: 85,
-  }
-}) => {
-  const recentArticles = [
-    { 
-      id: 1, 
-      title: 'The Future of Renewable Energy', 
-      status: 'published', 
-      views: 1250, 
-      publishedAt: '2 days ago',
-      category: 'Environment'
-    },
-    { 
-      id: 2, 
-      title: 'AI in Healthcare: Opportunities and Challenges', 
-      status: 'in_review', 
-      submittedAt: '1 day ago',
-      category: 'Technology'
-    },
-    { 
-      id: 3, 
-      title: 'Local Community Garden Initiative', 
-      status: 'draft', 
-      lastEdited: '3 hours ago',
-      category: 'Community'
-    },
-    { 
-      id: 4, 
-      title: 'Economic Impact of Remote Work', 
-      status: 'published', 
-      views: 890, 
-      publishedAt: '1 week ago',
-      category: 'Business'
-    },
-    { 
-      id: 5, 
-      title: 'Climate Change and Urban Planning', 
-      status: 'rejected', 
-      rejectedAt: '3 days ago',
-      feedback: 'Needs more data sources',
-      category: 'Environment'
-    },
-  ];
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
-  const writingTips = [
-    { tip: 'Use compelling headlines to increase engagement', category: 'Headlines' },
-    { tip: 'Include relevant statistics and data to support your arguments', category: 'Research' },
-    { tip: 'Break up long paragraphs for better readability', category: 'Formatting' },
-    { tip: 'Add relevant images and media to enhance your content', category: 'Media' },
-  ];
-
-  const upcomingDeadlines = [
-    { title: 'Monthly Feature Article', dueDate: 'Due in 3 days', priority: 'high' },
-    { title: 'Weekly Tech Review', dueDate: 'Due in 1 week', priority: 'medium' },
-    { title: 'Community Spotlight', dueDate: 'Due in 2 weeks', priority: 'low' },
-  ];
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadDashboardData();
+    setRefreshing(false);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'published': return 'bg-green-100 text-green-800';
-      case 'in_review': return 'bg-yellow-100 text-yellow-800';
-      case 'draft': return 'bg-blue-100 text-blue-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'PUBLISHED': return 'bg-green-100 text-green-800 border-green-200';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'DRAFT': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'REJECTED': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'published': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'in_review': return <Clock className="h-4 w-4 text-yellow-600" />;
-      case 'draft': return <Edit className="h-4 w-4 text-blue-600" />;
-      case 'rejected': return <XCircle className="h-4 w-4 text-red-600" />;
-      default: return <FileText className="h-4 w-4 text-gray-600" />;
+      case 'PUBLISHED': return <CheckCircle className="h-4 w-4" />;
+      case 'PENDING': return <Clock className="h-4 w-4" />;
+      case 'DRAFT': return <Edit className="h-4 w-4" />;
+      case 'REJECTED': return <XCircle className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const formatTimeAgo = (timestamp: string): string => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
+
+  // Transform recent articles to activity items
+  const recentActivity: ActivityItem[] = articles.slice(0, 5).map(article => ({
+    id: article.id,
+    type: article.status === 'PUBLISHED' ? 'publish' : 
+          article.status === 'PENDING' ? 'update' : 'create',
+    title: article.title,
+    description: `${article.status.toLowerCase()} • ${article.category.name}`,
+    timestamp: article.updatedAt,
+    metadata: {
+      category: article.category.name,
+      status: article.status
+    }
+  }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 p-6 bg-gradient-to-br from-purple-50 to-blue-50 min-h-screen">
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Author Dashboard</h1>
-          <p className="text-gray-600 mt-1">Your writing journey and content management</p>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            Author Dashboard
+          </h1>
+          <p className="text-gray-600 mt-2 text-lg">Your writing journey and content analytics</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center space-x-3">
+          <Button 
+            onClick={handleRefresh} 
+            disabled={refreshing}
+            variant="outline"
+            className="border-purple-200 text-purple-600 hover:bg-purple-50"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Link href="/articles/new">
-            <Button className="gap-2">
-              <PlusCircle className="h-4 w-4" />
+            <Button className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600">
+              <PlusCircle className="h-4 w-4 mr-2" />
               New Article
             </Button>
           </Link>
-          <Link href="/articles/drafts">
-            <Button variant="outline" className="gap-2">
-              <Edit className="h-4 w-4" />
-              My Drafts ({stats.draftArticles})
-            </Button>
-          </Link>
         </div>
       </div>
 
-      {/* Key Metrics */}
+      {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Articles</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalArticles}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">{stats.publishedArticles}</span> published
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Review</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.inReviewArticles}</div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting editorial review
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
-            <Eye className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalViews.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Across all published articles
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approval Rate</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.approvalRate}%</div>
-            <Progress value={stats.approvalRate} className="mt-2" />
-          </CardContent>
-        </Card>
+        {loading || !stats ? (
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Total Articles"
+              value={stats.totalArticles}
+              icon={FileText}
+              gradient="from-blue-500 to-blue-600"
+              change={{
+                value: 15,
+                type: 'increase',
+                period: 'vs last month'
+              }}
+            />
+            <StatCard
+              title="Published"
+              value={stats.publishedArticles}
+              icon={CheckCircle}
+              gradient="from-green-500 to-emerald-500"
+              change={{
+                value: stats.approvalRate,
+                type: 'increase',
+                period: 'approval rate'
+              }}
+            />
+            <StatCard
+              title="Total Views"
+              value={stats.totalViews.toLocaleString()}
+              icon={Eye}
+              gradient="from-purple-500 to-pink-500"
+              change={{
+                value: 23,
+                type: 'increase',
+                period: 'vs last month'
+              }}
+            />
+            <StatCard
+              title="In Review"
+              value={stats.inReviewArticles}
+              icon={Clock}
+              gradient="from-yellow-500 to-orange-500"
+              change={{
+                value: stats.inReviewArticles > 0 ? 100 : 0,
+                type: stats.inReviewArticles > 0 ? 'neutral' : 'decrease',
+                period: 'pending'
+              }}
+            />
+          </>
+        )}
       </div>
 
-      {/* Monthly Goal & Recent Articles */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
-              Monthly Writing Goal
-            </CardTitle>
-            <CardDescription>
-              Track your article publishing progress
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Progress</span>
-              <span className="text-sm text-gray-600">
-                {stats.monthlyProgress} / {stats.monthlyGoal} articles
-              </span>
-            </div>
-            <Progress value={(stats.monthlyProgress / stats.monthlyGoal) * 100} className="h-3" />
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Recent Articles */}
+        <div className="lg:col-span-2">
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
+                    <BookOpen className="h-5 w-5 mr-2 text-purple-600" />
+                    Recent Articles
+                  </CardTitle>
+                  <CardDescription>Your latest content and submissions</CardDescription>
+                </div>
+                <Link href="/articles">
+                  <Button variant="outline" size="sm">
+                    View All
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
             
-            <div className="grid grid-cols-2 gap-4 pt-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{stats.monthlyProgress}</div>
-                <p className="text-xs text-gray-600">Published</p>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-400">{stats.monthlyGoal - stats.monthlyProgress}</div>
-                <p className="text-xs text-gray-600">Remaining</p>
-              </div>
-            </div>
-
-            {stats.monthlyProgress >= stats.monthlyGoal && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                <Award className="h-6 w-6 text-green-600 mx-auto mb-1" />
-                <p className="text-sm font-medium text-green-800">Goal Achieved! 🎉</p>
-                <p className="text-xs text-green-600">Great work this month!</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Upcoming Deadlines
-            </CardTitle>
-            <CardDescription>
-              Keep track of your writing commitments
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {upcomingDeadlines.map((deadline, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 rounded-lg border">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{deadline.title}</p>
-                    <p className="text-xs text-gray-600">{deadline.dueDate}</p>
-                  </div>
-                  <Badge variant="outline" className={getPriorityColor(deadline.priority)}>
-                    {deadline.priority}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 pt-4 border-t">
-              <Button variant="outline" className="w-full gap-2">
-                <Calendar className="h-4 w-4" />
-                View Editorial Calendar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Articles */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Recent Articles
-          </CardTitle>
-          <CardDescription>
-            Your latest writing activity and status updates
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {recentArticles.map((article) => (
-              <div key={article.id} className="flex items-start gap-3 p-4 rounded-lg border hover:bg-gray-50 transition-colors">
-                {getStatusIcon(article.status)}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="text-sm font-medium text-gray-900 truncate">
-                      {article.title}
-                    </h4>
-                    <Badge variant="outline" className={getStatusColor(article.status)}>
-                      {article.status.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-gray-600">
-                    <span>{article.category}</span>
-                    {article.views && <span>{article.views} views</span>}
-                    {article.publishedAt && <span>Published {article.publishedAt}</span>}
-                    {article.submittedAt && <span>Submitted {article.submittedAt}</span>}
-                    {article.lastEdited && <span>Edited {article.lastEdited}</span>}
-                    {article.rejectedAt && <span>Rejected {article.rejectedAt}</span>}
-                  </div>
-                  {article.feedback && (
-                    <p className="text-xs text-red-600 mt-1 italic">
-                      Feedback: {article.feedback}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-1">
-                  {article.status === 'draft' && (
-                    <Button size="sm" variant="outline" className="h-7 px-2">
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                  )}
-                  {article.status === 'published' && (
-                    <Button size="sm" variant="outline" className="h-7 px-2">
-                      <Eye className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 pt-4 border-t">
-            <Link href="/articles/my">
-              <Button variant="outline" className="w-full gap-2">
-                <FileText className="h-4 w-4" />
-                View All My Articles
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Writing Tips & Performance */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Writing Tips
-            </CardTitle>
-            <CardDescription>
-              Improve your content with these editorial suggestions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {writingTips.map((tip, index) => (
-                <div key={index} className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                  <div className="flex items-start gap-2">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                    <div>
-                      <p className="text-sm text-blue-900">{tip.tip}</p>
-                      <p className="text-xs text-blue-600 mt-1">{tip.category}</p>
+            <CardContent>
+              {loading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="h-20 bg-gray-200 rounded-lg"></div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              ) : articles.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg font-medium">No articles yet</p>
+                  <p className="text-sm mb-4">Start writing your first article!</p>
+                  <Link href="/articles/new">
+                    <Button className="bg-gradient-to-r from-purple-500 to-blue-500">
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Create Article
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {articles.map((article) => (
+                    <div key={article.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="font-semibold text-gray-900 text-lg">{article.title}</h3>
+                            <Badge className={getStatusColor(article.status)}>
+                              <div className="flex items-center space-x-1">
+                                {getStatusIcon(article.status)}
+                                <span>{article.status}</span>
+                              </div>
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {article.category.name}
+                            </Badge>
+                          </div>
+                          
+                          <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                            <span className="flex items-center">
+                              <Calendar className="h-4 w-4 mr-1" />
+                              {formatTimeAgo(article.updatedAt)}
+                            </span>
+                            {article.views && (
+                              <span className="flex items-center">
+                                <Eye className="h-4 w-4 mr-1" />
+                                {article.views.toLocaleString()} views
+                              </span>
+                            )}
+                          </div>
+                          
+                          {article.excerpt && (
+                            <p className="text-gray-600 text-sm line-clamp-2">
+                              {article.excerpt}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center space-x-2 ml-4">
+                          <Link href={`/articles/${article.id}/edit`}>
+                            <Button size="sm" variant="outline">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Performance Insights
-            </CardTitle>
-            <CardDescription>
-              Your writing statistics and trends
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <span className="text-sm">Published Articles</span>
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Writing Goals */}
+          {loading || !stats ? (
+            <MetricCardSkeleton />
+          ) : (
+            <MetricCard
+              title="Monthly Goal"
+              description="Articles this month"
+              value={stats.monthlyProgress}
+              target={stats.monthlyGoal}
+              icon={Target}
+              color="purple"
+              showProgress={true}
+            >
+              <div className="mt-3 text-xs text-gray-500">
+                {stats.monthlyGoal - stats.monthlyProgress} more to reach your goal
               </div>
-              <Badge variant="secondary">{stats.publishedArticles}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Edit className="h-4 w-4 text-blue-600" />
-                <span className="text-sm">Draft Articles</span>
-              </div>
-              <Badge variant="secondary">{stats.draftArticles}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm">In Review</span>
-              </div>
-              <Badge variant="secondary">{stats.inReviewArticles}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Eye className="h-4 w-4 text-purple-600" />
-                <span className="text-sm">Avg Views per Article</span>
-              </div>
-              <Badge variant="secondary">{Math.round(stats.totalViews / stats.publishedArticles)}</Badge>
-            </div>
-          </CardContent>
-        </Card>
+            </MetricCard>
+          )}
+
+          {/* Performance Metrics */}
+          {loading || !stats ? (
+            <MetricCardSkeleton />
+          ) : (
+            <MetricCard
+              title="Approval Rate"
+              description="Articles approved vs submitted"
+              value={stats.approvalRate}
+              maxValue={100}
+              unit="%"
+              icon={Award}
+              color="green"
+              showProgress={true}
+            />
+          )}
+
+          {/* Average Views */}
+          {loading || !stats ? (
+            <MetricCardSkeleton />
+          ) : (
+            <MetricCard
+              title="Avg Views"
+              description="Per published article"
+              value={stats.avgViewsPerArticle}
+              icon={TrendingUp}
+              color="blue"
+              showProgress={false}
+            />
+          )}
+
+          {/* Recent Activity */}
+          {loading ? (
+            <ActivityFeedSkeleton />
+          ) : (
+            <ActivityFeed
+              title="Recent Activity"
+              activities={recentActivity}
+              maxItems={5}
+              showViewAll={true}
+              onViewAll={() => console.log('View all activity')}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
-            Common writing and content management tasks
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link href="/articles/new">
-              <Button variant="outline" className="w-full gap-2 h-auto py-4 flex-col">
-                <PlusCircle className="h-6 w-6" />
-                <span className="text-sm">New Article</span>
-              </Button>
-            </Link>
-            <Link href="/articles/drafts">
-              <Button variant="outline" className="w-full gap-2 h-auto py-4 flex-col">
-                <Edit className="h-6 w-6" />
-                <span className="text-sm">My Drafts</span>
-              </Button>
-            </Link>
-            <Link href="/articles/my">
-              <Button variant="outline" className="w-full gap-2 h-auto py-4 flex-col">
-                <FileText className="h-6 w-6" />
-                <span className="text-sm">My Articles</span>
-              </Button>
-            </Link>
-            <Link href="/media">
-              <Button variant="outline" className="w-full gap-2 h-auto py-4 flex-col">
-                <Image className="h-6 w-6" />
-                <span className="text-sm">Media Library</span>
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Insights and Analytics */}
+      {insights && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Top Performing Articles */}
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
+                <TrendingUp className="h-5 w-5 mr-2 text-green-600" />
+                Top Performing Articles
+              </CardTitle>
+              <CardDescription>Your most viewed published content</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {insights.topPerformingArticles.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <BarChart3 className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                  <p>No published articles yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {insights.topPerformingArticles.map((article: any, index: number) => (
+                    <div key={article.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">{article.title}</p>
+                          <p className="text-xs text-gray-500">{article.category.name}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-gray-900">{article.views?.toLocaleString()}</p>
+                        <p className="text-xs text-gray-500">views</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Writing Statistics */}
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
+                <BarChart3 className="h-5 w-5 mr-2 text-blue-600" />
+                Writing Statistics
+              </CardTitle>
+              <CardDescription>Your content creation insights</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* This Week Stats */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                    <p className="text-2xl font-bold text-blue-600">{insights.recentActivity.articlesThisWeek}</p>
+                    <p className="text-xs text-gray-600">Articles This Week</p>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <p className="text-2xl font-bold text-green-600">{insights.recentActivity.viewsThisWeek.toLocaleString()}</p>
+                    <p className="text-xs text-gray-600">Views This Week</p>
+                  </div>
+                </div>
+
+                {/* Category Distribution */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Content by Category</h4>
+                  <div className="space-y-2">
+                    {insights.categoryDistribution.slice(0, 3).map((cat: any) => (
+                      <div key={cat.category} className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">{cat.category}</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-16 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full"
+                              style={{ width: `${cat.percentage}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{cat.count}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Writing Streak */}
+                <div className="p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Writing Streak</p>
+                      <p className="text-lg font-bold text-purple-600">{insights.writingStreak.current} days</p>
+                    </div>
+                    <Zap className="h-8 w-8 text-purple-500" />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Best: {insights.writingStreak.longest} days
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
-
-export default AuthorDashboard;
 
