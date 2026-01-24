@@ -28,7 +28,11 @@ export function SettingsCategory({
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [hasChanges, setHasChanges] = React.useState<Record<string, boolean>>({});
 
-  const categorySettings = getSettingsByType(settings, category);
+  // Memoize categorySettings to prevent infinite re-renders
+  const categorySettings = React.useMemo(() => 
+    getSettingsByType(settings, category), 
+    [settings, category]
+  );
   const categoryInfo = SETTING_CATEGORIES[category];
 
   // Initialize form data with current setting values
