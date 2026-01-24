@@ -9,12 +9,14 @@ import {
   XCircle,
   TrendingUp, 
   Users,
+  BarChart3,
   Calendar,
   Star,
   AlertCircle,
   Eye,
   ThumbsUp,
-  MessageSquare
+  MessageSquare,
+  Tags
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
