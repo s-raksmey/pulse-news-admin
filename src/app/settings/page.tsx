@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Search, Settings as SettingsIcon, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { getAuthenticatedGqlClient } from '@/services/graphql-client';
 import { Q_SETTINGS, M_UPDATE_SETTING, M_RESET_SETTING } from '@/services/settings.gql';
-import { SettingType, SETTING_CATEGORIES, Setting, UpdateSettingInput } from '@/types/settings';
+import { SettingType, SETTING_CATEGORIES, Setting, UpdateSettingInput } from '@/services/settings.gql';
 import { SettingsCategory } from '@/components/settings';
 
 export default function SettingsPage() {
