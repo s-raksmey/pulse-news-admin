@@ -32,10 +32,24 @@ export default function SettingsPage() {
       const client = getAuthenticatedGqlClient();
       const response = await client.request(Q_SETTINGS);
       
-      setSettings(response.settings || []);
+      // Add proper null checking for the response
+      if (!response) {
+        console.warn('GraphQL response is null or undefined');
+        setSettings([]);
+        return;
+      }
+      
+      // Check if response has the expected structure
+      if (typeof response === 'object' && 'settings' in response) {
+        setSettings(response.settings || []);
+      } else {
+        console.warn('GraphQL response does not have expected structure:', response);
+        setSettings([]);
+      }
     } catch (err) {
       console.error('Failed to load settings:', err);
       setError(err instanceof Error ? err.message : 'Failed to load settings');
+      setSettings([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
