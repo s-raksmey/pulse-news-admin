@@ -67,8 +67,8 @@ export const UserList: React.FC<UserListProps> = () => {
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'ADMIN' | 'EDITOR' | 'AUTHOR' | ''>('');
-  const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'INACTIVE' | ''>('');
+  const [roleFilter, setRoleFilter] = useState<'ADMIN' | 'EDITOR' | 'AUTHOR' | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'INACTIVE' | 'ALL'>('ALL');
   const [sortBy, setSortBy] = useState<'name' | 'email' | 'role' | 'createdAt' | 'updatedAt'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -77,8 +77,8 @@ export const UserList: React.FC<UserListProps> = () => {
       take: pageSize,
       skip: (page - 1) * pageSize,
       search: searchTerm || undefined,
-      role: roleFilter || undefined,
-      status: statusFilter || undefined,
+      role: roleFilter === 'ALL' ? undefined : roleFilter,
+      status: statusFilter === 'ALL' ? undefined : statusFilter,
       sortBy,
       sortOrder,
     };
@@ -101,12 +101,12 @@ export const UserList: React.FC<UserListProps> = () => {
   };
 
   const handleRoleFilter = (value: string) => {
-    setRoleFilter(value as 'ADMIN' | 'EDITOR' | 'AUTHOR' | '');
+    setRoleFilter(value as 'ADMIN' | 'EDITOR' | 'AUTHOR' | 'ALL');
     setCurrentPage(1);
   };
 
   const handleStatusFilter = (value: string) => {
-    setStatusFilter(value as 'ACTIVE' | 'INACTIVE' | '');
+    setStatusFilter(value as 'ACTIVE' | 'INACTIVE' | 'ALL');
     setCurrentPage(1);
   };
 
@@ -229,7 +229,7 @@ export const UserList: React.FC<UserListProps> = () => {
                 <SelectValue placeholder="All Roles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Roles</SelectItem>
+                <SelectItem value="ALL">All Roles</SelectItem>
                 <SelectItem value="ADMIN">Admin</SelectItem>
                 <SelectItem value="EDITOR">Editor</SelectItem>
                 <SelectItem value="AUTHOR">Author</SelectItem>
@@ -240,7 +240,7 @@ export const UserList: React.FC<UserListProps> = () => {
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Status</SelectItem>
+                <SelectItem value="ALL">All Status</SelectItem>
                 <SelectItem value="ACTIVE">Active</SelectItem>
                 <SelectItem value="INACTIVE">Inactive</SelectItem>
               </SelectContent>
