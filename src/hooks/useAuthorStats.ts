@@ -165,7 +165,7 @@ export function useAuthorStats() {
       publishedArticles: publishedByUser.length,
       draftArticles: draftsByUser.length,
       inReviewArticles: pendingByUser.length,
-      rejectedArticles: userArticles.filter((a: any) => a.status === 'REJECTED').length,
+      rejectedArticles: userArticles.filter((a: any) => a.status === 'ARCHIVED').length,
       totalViews,
       monthlyGoal: 8, // This would come from user preferences
       monthlyProgress,
