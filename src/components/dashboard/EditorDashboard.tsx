@@ -58,29 +58,37 @@ export const EditorDashboard: React.FC = () => {
   // Load dashboard data
   const loadDashboardData = async () => {
     try {
-      // Load core data first
-      const [statsData, articlesData, actionsData] = await Promise.all([
+      // Load essential data first (stats and articles)
+      const [statsData, articlesData] = await Promise.all([
         getEditorialStats(),
-        getPendingArticles(10),
-        getRecentActions(8)
+        getPendingArticles(10)
       ]);
 
       setStats(statsData);
       setPendingArticles(articlesData);
-      
-      // Transform actions to ActivityItem format
-      const transformedActions: ActivityItem[] = actionsData.map(action => ({
-        id: action.id,
-        type: action.type as any,
-        title: action.articleTitle,
-        description: `by ${action.authorName}`,
-        user: { name: action.editorName },
-        timestamp: action.timestamp,
-        metadata: {
-          category: 'Editorial'
-        }
-      }));
-      setRecentActions(transformedActions);
+
+      // Load editorial actions separately with error handling
+      try {
+        const actionsData = await getRecentActions(8);
+        
+        // Transform actions to ActivityItem format
+        const transformedActions: ActivityItem[] = actionsData.map(action => ({
+          id: action.id,
+          type: action.type as any,
+          title: action.articleTitle,
+          description: `by ${action.authorName}`,
+          user: { name: action.editorName },
+          timestamp: action.timestamp,
+          metadata: {
+            category: 'Editorial'
+          }
+        }));
+        setRecentActions(transformedActions);
+      } catch (actionsError) {
+        console.warn('Failed to load editorial actions data:', actionsError);
+        // Set empty array so the UI can show a "no data" state instead of loading forever
+        setRecentActions([]);
+      }
 
       // Load author performance separately with error handling
       try {
