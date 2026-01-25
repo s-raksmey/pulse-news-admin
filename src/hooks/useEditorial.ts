@@ -264,36 +264,151 @@ export function useEditorial() {
       throw new Error('Insufficient permissions to view author performance metrics');
     }
 
-    const AUTHOR_PERFORMANCE_QUERY = `
-      query GetAuthorPerformance($take: Int) {
-        authorPerformanceMetrics(take: $take) {
-          authorId
-          authorName
-          articlesSubmitted
-          articlesApproved
-          articlesRejected
-          avgReviewTime
-          categories
-          lastSubmissionDate
+    try {
+      // First, try the original authorPerformanceMetrics query
+      const AUTHOR_PERFORMANCE_QUERY = `
+        query GetAuthorPerformance($take: Int) {
+          authorPerformanceMetrics(take: $take) {
+            authorId
+            authorName
+            articlesSubmitted
+            articlesApproved
+            articlesRejected
+            avgReviewTime
+            categories
+            lastSubmissionDate
+          }
         }
-      }
-    `;
+      `;
 
-    const result = await executeQuery(AUTHOR_PERFORMANCE_QUERY, { take: limit });
-    
-    if (!result) {
-      throw new Error('Failed to fetch author performance metrics from API');
+      const result = await executeQuery(AUTHOR_PERFORMANCE_QUERY, { take: limit });
+      
+      if (result && result.authorPerformanceMetrics) {
+        return result.authorPerformanceMetrics.map((author: any) => ({
+          authorId: author.authorId,
+          name: author.authorName,
+          articlesSubmitted: author.articlesSubmitted,
+          approvalRate: Math.round((author.articlesApproved / (author.articlesApproved + author.articlesRejected)) * 100) || 0,
+          avgReviewTime: author.avgReviewTime,
+          categories: author.categories || [],
+          lastSubmission: author.lastSubmissionDate,
+        }));
+      }
+    } catch (error) {
+      console.warn('authorPerformanceMetrics query failed, using fallback implementation:', error);
     }
-    
-    return (result.authorPerformanceMetrics || []).map((author: any) => ({
-      authorId: author.authorId,
-      name: author.authorName,
-      articlesSubmitted: author.articlesSubmitted,
-      approvalRate: Math.round((author.articlesApproved / (author.articlesApproved + author.articlesRejected)) * 100) || 0,
-      avgReviewTime: author.avgReviewTime,
-      categories: author.categories || [],
-      lastSubmission: author.lastSubmissionDate,
-    }));
+
+    // Fallback: Calculate author performance from existing data
+    try {
+      // Get all articles to analyze author performance
+      const ARTICLES_QUERY = `
+        query GetArticlesForAuthorAnalysis($take: Int) {
+          articles(take: $take) {
+            id
+            authorName
+            status
+            createdAt
+            publishedAt
+            category {
+              name
+            }
+          }
+        }
+      `;
+
+      // Get users to map author names to IDs
+      const USERS_QUERY = `
+        query GetAuthors {
+          listUsers(input: { role: AUTHOR, take: 100 }) {
+            users {
+              id
+              name
+              role
+              createdAt
+            }
+          }
+        }
+      `;
+
+      const [articlesResult, usersResult] = await Promise.all([
+        executeQuery(ARTICLES_QUERY, { take: 500 }), // Get more articles for better analysis
+        executeQuery(USERS_QUERY)
+      ]);
+
+      if (!articlesResult?.articles || !usersResult?.listUsers?.users) {
+        throw new Error('Failed to fetch data for author performance analysis');
+      }
+
+      const articles = articlesResult.articles;
+      const authors = usersResult.listUsers.users.filter((user: any) => user.role === 'AUTHOR');
+
+      // Calculate performance metrics for each author
+      const authorMetrics = authors.map((author: any) => {
+        const authorArticles = articles.filter((article: any) => 
+          article.authorName === author.name
+        );
+
+        const submittedCount = authorArticles.length;
+        const approvedCount = authorArticles.filter((article: any) => 
+          article.status === 'PUBLISHED' || article.status === 'APPROVED'
+        ).length;
+        const rejectedCount = authorArticles.filter((article: any) => 
+          article.status === 'REJECTED'
+        ).length;
+
+        // Get unique categories
+        const categories = [...new Set(
+          authorArticles
+            .filter((article: any) => article.category?.name)
+            .map((article: any) => article.category.name)
+        )];
+
+        // Calculate average review time (simplified - using days between creation and publication)
+        const publishedArticles = authorArticles.filter((article: any) => 
+          article.publishedAt && article.createdAt
+        );
+        
+        let avgReviewTime = 0;
+        if (publishedArticles.length > 0) {
+          const totalReviewTime = publishedArticles.reduce((sum: number, article: any) => {
+            const created = new Date(article.createdAt);
+            const published = new Date(article.publishedAt);
+            return sum + (published.getTime() - created.getTime()) / (1000 * 60 * 60 * 24); // days
+          }, 0);
+          avgReviewTime = Math.round(totalReviewTime / publishedArticles.length);
+        }
+
+        // Get last submission date
+        const lastSubmission = authorArticles.length > 0 
+          ? authorArticles.sort((a: any, b: any) => 
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            )[0].createdAt
+          : author.createdAt;
+
+        return {
+          authorId: author.id,
+          name: author.name,
+          articlesSubmitted: submittedCount,
+          approvalRate: submittedCount > 0 
+            ? Math.round((approvedCount / submittedCount) * 100) 
+            : 0,
+          avgReviewTime,
+          categories,
+          lastSubmission,
+        };
+      });
+
+      // Sort by articles submitted (most active first) and limit results
+      return authorMetrics
+        .sort((a, b) => b.articlesSubmitted - a.articlesSubmitted)
+        .slice(0, limit);
+
+    } catch (fallbackError) {
+      console.error('Fallback author performance calculation failed:', fallbackError);
+      
+      // Final fallback: return empty array with proper error handling
+      throw new Error('Unable to fetch author performance metrics. Please ensure the GraphQL server is running and the schema includes authorPerformanceMetrics query.');
+    }
   }, [executeQuery, user]);
 
   // Approve an article with RBAC check
