@@ -98,7 +98,6 @@ export function useArticles() {
           isFeatured
           isEditorsPick
           isBreaking
-          viewCount
           publishedAt
           createdAt
           updatedAt

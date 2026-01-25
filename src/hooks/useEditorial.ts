@@ -191,8 +191,6 @@ export function useEditorial() {
             slug
           }
           status
-          wordCount
-          priority
         }
       }
     `;
@@ -209,10 +207,10 @@ export function useEditorial() {
       excerpt: article.excerpt,
       authorName: article.authorName,
       submittedAt: article.createdAt,
-      priority: article.priority || 'medium' as const,
+      priority: 'medium' as const, // Default priority since field doesn't exist in schema
       category: article.category,
       status: article.status,
-      wordCount: article.wordCount,
+      wordCount: undefined, // Field doesn't exist in schema
     }));
   }, [executeQuery, user]);
 

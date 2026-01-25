@@ -42,7 +42,7 @@ export const Q_ARTICLES = /* GraphQL */ `
       isFeatured
       isEditorsPick
       isBreaking
-      viewCount
+
       publishedAt
       createdAt
       updatedAt

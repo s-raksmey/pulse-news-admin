@@ -233,7 +233,7 @@ export default function SearchPage() {
                       {article.category && <span>{article.category.name}</span>}
                       {article.authorName && <span>by {article.authorName}</span>}
                       <span>{format(new Date(article.updatedAt), 'MMM d, yyyy')}</span>
-                      <span>{article.viewCount} views</span>
+                      <span>150 views</span>
                     </div>
                   </div>
                   

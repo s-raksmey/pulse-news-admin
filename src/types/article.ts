@@ -74,7 +74,7 @@ export interface Article {
   isEditorsPick: boolean;
   isBreaking: boolean;
   pinnedAt?: string;
-  viewCount: number;
+  viewCount?: number;
   
   // Timestamps
   createdAt: string;
