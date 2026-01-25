@@ -58,11 +58,11 @@ export const EditorDashboard: React.FC = () => {
   // Load dashboard data
   const loadDashboardData = async () => {
     try {
-      const [statsData, articlesData, actionsData, performanceData] = await Promise.all([
+      // Load core data first
+      const [statsData, articlesData, actionsData] = await Promise.all([
         getEditorialStats(),
         getPendingArticles(10),
-        getRecentActions(8),
-        getAuthorPerformance(5)
+        getRecentActions(8)
       ]);
 
       setStats(statsData);
@@ -81,7 +81,16 @@ export const EditorDashboard: React.FC = () => {
         }
       }));
       setRecentActions(transformedActions);
-      setAuthorPerformance(performanceData);
+
+      // Load author performance separately with error handling
+      try {
+        const performanceData = await getAuthorPerformance(5);
+        setAuthorPerformance(performanceData);
+      } catch (performanceError) {
+        console.warn('Failed to load author performance data:', performanceError);
+        // Set empty array so the UI can show a "no data" state instead of loading forever
+        setAuthorPerformance([]);
+      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     }
@@ -569,6 +578,48 @@ export const EditorDashboard: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* Author Performance Section */}
+      {authorPerformance.length > 0 && (
+        <div className="mt-8">
+          <Card className="shadow-xl border-0 bg-gradient-to-br from-purple-50 to-indigo-50">
+            <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-t-lg">
+              <CardTitle className="text-lg font-semibold flex items-center">
+                <Users className="h-5 w-5 mr-3" />
+                Top Author Performance
+              </CardTitle>
+              <CardDescription className="text-purple-100">
+                Most active authors and their metrics
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="space-y-3">
+                {authorPerformance.slice(0, 5).map((author, index) => (
+                  <div key={author.authorId} className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                          {index + 1}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{author.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {author.articlesSubmitted} articles • {author.approvalRate}% approval rate
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-900">{author.avgReviewTime}d</p>
+                      <p className="text-xs text-gray-500">avg review</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       </div>
     </div>
