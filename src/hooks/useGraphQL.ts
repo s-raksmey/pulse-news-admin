@@ -81,12 +81,13 @@ export function useArticles() {
     status?: string;
     categorySlug?: string;
     topic?: string;
+    authorId?: string;
     take?: number;
     skip?: number;
   }) => {
     const ARTICLES_QUERY = `
-      query GetArticles($status: ArticleStatus, $categorySlug: String, $topic: String, $take: Int, $skip: Int) {
-        articles(status: $status, categorySlug: $categorySlug, topic: $topic, take: $take, skip: $skip) {
+      query GetArticles($status: ArticleStatus, $categorySlug: String, $topic: String, $authorId: ID, $take: Int, $skip: Int) {
+        articles(status: $status, categorySlug: $categorySlug, topic: $topic, authorId: $authorId, take: $take, skip: $skip) {
           id
           title
           slug
