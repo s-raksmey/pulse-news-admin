@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
-import fs from "fs";
-import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import { r2Service, getMediaTypeFromMimeType, getMimeTypeFromExtension } from "@/services/r2";
+import { validateR2Config } from "@/config/r2";
 import type { MediaFile, MediaType, MediaUploadOptions } from "@/types/media";
 
 // File type mappings
@@ -51,12 +51,8 @@ function getMediaType(mimeType: string): MediaType {
   return MIME_TYPE_MAP[mimeType] || 'other';
 }
 
-function sanitizeFilename(filename: string): string {
-  return filename
-    .replace(/[^a-zA-Z0-9.-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-}
+// Check R2 configuration on module load
+const isR2Configured = validateR2Config();
 
 async function processImage(
   buffer: Buffer,
@@ -100,6 +96,14 @@ async function processImage(
 
 export async function POST(req: Request) {
   try {
+    // Check R2 configuration
+    if (!isR2Configured) {
+      return NextResponse.json(
+        { success: false, message: "R2 storage is not properly configured" },
+        { status: 500 }
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const optionsStr = formData.get("options") as string | null;
@@ -127,19 +131,7 @@ export async function POST(req: Request) {
     
     const buffer = Buffer.from(await file.arrayBuffer());
     const fileId = uuidv4();
-    const sanitizedName = sanitizeFilename(file.name);
-    const timestamp = Date.now();
-    const filename = `${timestamp}-${fileId}-${sanitizedName}`;
     
-    // Create folder structure
-    const baseUploadDir = path.join(process.cwd(), "public/uploads");
-    const folderPath = options.folder ? path.join(baseUploadDir, options.folder) : baseUploadDir;
-    
-    if (!fs.existsSync(folderPath)) {
-      fs.mkdirSync(folderPath, { recursive: true });
-    }
-    
-    const outputPath = path.join(folderPath, filename);
     let processedBuffer = buffer;
     let width: number | undefined;
     let height: number | undefined;
@@ -161,16 +153,29 @@ export async function POST(req: Request) {
       }
     }
     
-    // Save file
-    fs.writeFileSync(outputPath, processedBuffer);
+    // Generate R2 key
+    const key = r2Service.generateFileKey(file.name, options.folder, fileId);
+    
+    // Upload to R2
+    const uploadResult = await r2Service.uploadFile(
+      processedBuffer,
+      key,
+      file.type,
+      {
+        originalName: file.name,
+        uploadedBy: 'current-user', // TODO: Get from auth context
+        alt: options.alt || '',
+        caption: options.caption || '',
+        tags: JSON.stringify(options.tags || []),
+      }
+    );
     
     // Create media file object
-    const relativePath = options.folder ? `${options.folder}/${filename}` : filename;
     const mediaFile: Partial<MediaFile> = {
       id: fileId,
-      filename,
+      filename: key.split('/').pop() || key,
       originalName: file.name,
-      url: `/uploads/${relativePath}`,
+      url: uploadResult.url,
       type: mediaType,
       mimeType: file.type,
       size: processedBuffer.length,
@@ -183,6 +188,11 @@ export async function POST(req: Request) {
       uploadedAt: new Date().toISOString(),
       uploadedBy: 'current-user', // TODO: Get from auth context
       lastModified: new Date().toISOString(),
+      // R2-specific fields
+      bucket: uploadResult.bucket,
+      key: uploadResult.key,
+      etag: uploadResult.etag,
+      storageClass: 'STANDARD',
     };
     
     // TODO: Save to database
@@ -191,13 +201,13 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       file: mediaFile,
-      message: "File uploaded successfully",
+      message: "File uploaded successfully to R2",
     });
     
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(
-      { success: false, message: "Upload failed" },
+      { success: false, message: `Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }
@@ -205,61 +215,99 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
+    // Check R2 configuration
+    if (!isR2Configured) {
+      return NextResponse.json(
+        { success: false, message: "R2 storage is not properly configured" },
+        { status: 500 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const folder = searchParams.get('folder') || '';
+    const maxKeys = parseInt(searchParams.get('maxKeys') || '1000');
+    const continuationToken = searchParams.get('continuationToken') || undefined;
     
-    // Get files from upload directory
-    const uploadDir = path.join(process.cwd(), "public/uploads", folder);
+    // List files from R2
+    const result = await r2Service.listFiles(
+      folder ? `${folder}/` : undefined,
+      maxKeys,
+      continuationToken
+    );
     
-    if (!fs.existsSync(uploadDir)) {
-      return NextResponse.json({
-        success: true,
-        files: [],
-        folders: [],
-      });
-    }
-    
-    const items = fs.readdirSync(uploadDir, { withFileTypes: true });
     const files: Partial<MediaFile>[] = [];
-    const folders: string[] = [];
+    const folders: Set<string> = new Set();
     
-    for (const item of items) {
-      if (item.isDirectory()) {
-        folders.push(item.name);
-      } else if (item.isFile()) {
-        const filePath = path.join(uploadDir, item.name);
-        const stats = fs.statSync(filePath);
-        const relativePath = folder ? `${folder}/${item.name}` : item.name;
+    for (const r2File of result.files) {
+      const key = r2File.key;
+      
+      // Extract folder structure
+      if (folder) {
+        const relativePath = key.replace(`${folder}/`, '');
+        const pathParts = relativePath.split('/');
         
-        // Try to determine file type from extension
-        const ext = path.extname(item.name).toLowerCase();
-        const mimeType = getMimeTypeFromExtension(ext);
-        const mediaType = getMediaType(mimeType);
-        
-        files.push({
-          id: item.name, // Use filename as ID for now
-          filename: item.name,
-          originalName: item.name,
-          url: `/uploads/${relativePath}`,
-          type: mediaType,
-          mimeType,
-          size: stats.size,
-          uploadedAt: stats.birthtime.toISOString(),
-          lastModified: stats.mtime.toISOString(),
-        });
+        if (pathParts.length > 1) {
+          // This is a file in a subfolder
+          folders.add(pathParts[0]);
+          continue;
+        }
+      } else {
+        const pathParts = key.split('/');
+        if (pathParts.length > 1) {
+          // This is a file in a folder
+          folders.add(pathParts[0]);
+          continue;
+        }
       }
+      
+      // Determine file type from key
+      const ext = key.substring(key.lastIndexOf('.')).toLowerCase();
+      const mimeType = getMimeTypeFromExtension(ext);
+      const mediaType = getMediaType(mimeType);
+      
+      // Extract filename from key
+      const filename = key.split('/').pop() || key;
+      
+      // Try to extract original name from metadata (if available)
+      let originalName = filename;
+      try {
+        const metadata = await r2Service.getFileMetadata(key);
+        originalName = metadata.metadata?.originalName || filename;
+      } catch (error) {
+        // Ignore metadata errors, use filename as fallback
+        console.warn(`Could not get metadata for ${key}:`, error);
+      }
+      
+      files.push({
+        id: key, // Use R2 key as ID
+        filename,
+        originalName,
+        url: r2Service.getPublicUrl(key),
+        type: mediaType,
+        mimeType,
+        size: r2File.size,
+        uploadedAt: r2File.lastModified.toISOString(),
+        lastModified: r2File.lastModified.toISOString(),
+        // R2-specific fields
+        bucket: r2Service['config'].bucketName,
+        key: r2File.key,
+        etag: r2File.etag,
+        storageClass: 'STANDARD',
+      });
     }
     
     return NextResponse.json({
       success: true,
       files,
-      folders,
+      folders: Array.from(folders),
+      isTruncated: result.isTruncated,
+      nextContinuationToken: result.nextContinuationToken,
     });
     
   } catch (error) {
-    console.error("Error listing files:", error);
+    console.error("Error listing files from R2:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to list files" },
+      { success: false, message: `Failed to list files: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }
@@ -267,87 +315,57 @@ export async function GET(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    // Check R2 configuration
+    if (!isR2Configured) {
+      return NextResponse.json(
+        { success: false, message: "R2 storage is not properly configured" },
+        { status: 500 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const fileId = searchParams.get('id');
     const filename = searchParams.get('filename');
     
-    if (!fileId || !filename) {
+    if (!fileId) {
       return NextResponse.json(
-        { success: false, message: "File ID and filename are required" },
+        { success: false, message: "File ID is required" },
         { status: 400 }
       );
     }
     
-    // Find and delete the file
-    const uploadDir = path.join(process.cwd(), "public/uploads");
+    // For R2, the fileId is actually the key
+    const key = fileId;
     
-    // Search for the file in the upload directory and subdirectories
-    const findAndDeleteFile = (dir: string): boolean => {
-      if (!fs.existsSync(dir)) return false;
+    try {
+      // Delete file from R2
+      await r2Service.deleteFile(key);
       
-      const items = fs.readdirSync(dir, { withFileTypes: true });
+      // TODO: Remove from database
+      // await deleteMediaFile(fileId);
       
-      for (const item of items) {
-        const itemPath = path.join(dir, item.name);
-        
-        if (item.isDirectory()) {
-          // Recursively search in subdirectories
-          if (findAndDeleteFile(itemPath)) return true;
-        } else if (item.isFile() && item.name === filename) {
-          // Found the file, delete it
-          fs.unlinkSync(itemPath);
-          return true;
-        }
+      return NextResponse.json({
+        success: true,
+        message: "File deleted successfully from R2",
+      });
+      
+    } catch (deleteError) {
+      // Check if file doesn't exist (404 error)
+      if (deleteError instanceof Error && deleteError.message.includes('NoSuchKey')) {
+        return NextResponse.json(
+          { success: false, message: "File not found in R2" },
+          { status: 404 }
+        );
       }
       
-      return false;
-    };
-    
-    const fileDeleted = findAndDeleteFile(uploadDir);
-    
-    if (!fileDeleted) {
-      return NextResponse.json(
-        { success: false, message: "File not found" },
-        { status: 404 }
-      );
+      throw deleteError;
     }
-    
-    // TODO: Remove from database
-    // await deleteMediaFile(fileId);
-    
-    return NextResponse.json({
-      success: true,
-      message: "File deleted successfully",
-    });
     
   } catch (error) {
     console.error("Delete error:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to delete file" },
+      { success: false, message: `Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }
-}
-
-function getMimeTypeFromExtension(ext: string): string {
-  const mimeTypes: Record<string, string> = {
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.png': 'image/png',
-    '.gif': 'image/gif',
-    '.webp': 'image/webp',
-    '.svg': 'image/svg+xml',
-    '.mp4': 'video/mp4',
-    '.webm': 'video/webm',
-    '.ogg': 'video/ogg',
-    '.mp3': 'audio/mp3',
-    '.wav': 'audio/wav',
-    '.pdf': 'application/pdf',
-    '.doc': 'application/msword',
-    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.txt': 'text/plain',
-    '.csv': 'text/csv',
-  };
-  
-  return mimeTypes[ext] || 'application/octet-stream';
 }

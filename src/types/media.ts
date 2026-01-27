@@ -20,6 +20,11 @@ export interface MediaFile {
   uploadedAt: string;
   uploadedBy: string;
   lastModified: string;
+  // R2-specific fields
+  bucket?: string;
+  key?: string;
+  etag?: string;
+  storageClass?: string;
 }
 
 export interface MediaFolder {
