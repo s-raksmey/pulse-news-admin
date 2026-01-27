@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useArticles, useArticleMutations } from "@/hooks/useGraphQL";
 import { Button } from "@/components/ui/button";
-import { Article, ArticleStatus } from "@/types/article";
+import type { Article, ArticleStatus } from "@/types/article";
 import { Badge } from "@/components/ui/badge";
 import { 
   DropdownMenu, 
@@ -148,16 +148,16 @@ export default function MyArticlesPage() {
             <DropdownMenuItem onClick={() => setStatusFilter(undefined)}>
               All
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter(ArticleStatus.DRAFT)}>
+            <DropdownMenuItem onClick={() => setStatusFilter('DRAFT')}>
               Draft
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter(ArticleStatus.REVIEW)}>
+            <DropdownMenuItem onClick={() => setStatusFilter('REVIEW')}>
               Review
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter(ArticleStatus.PUBLISHED)}>
+            <DropdownMenuItem onClick={() => setStatusFilter('PUBLISHED')}>
               Published
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter(ArticleStatus.ARCHIVED)}>
+            <DropdownMenuItem onClick={() => setStatusFilter('ARCHIVED')}>
               Archived
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -237,33 +237,33 @@ export default function MyArticlesPage() {
                               Edit
                             </Link>
                           </DropdownMenuItem>
-                          {article.status === ArticleStatus.DRAFT && (
+                          {article.status === 'DRAFT' && (
                             <DropdownMenuItem 
-                              onClick={() => handleStatusChange(article.id, ArticleStatus.REVIEW)}
+                              onClick={() => handleStatusChange(article.id, 'REVIEW')}
                               disabled={mutationLoading}
                             >
                               Submit for Review
                             </DropdownMenuItem>
                           )}
-                          {article.status === ArticleStatus.REVIEW && isAdmin && (
+                          {article.status === 'REVIEW' && isAdmin && (
                             <>
                               <DropdownMenuItem 
-                                onClick={() => handleStatusChange(article.id, ArticleStatus.PUBLISHED)}
+                                onClick={() => handleStatusChange(article.id, 'PUBLISHED')}
                                 disabled={mutationLoading}
                               >
                                 Publish
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => handleStatusChange(article.id, ArticleStatus.DRAFT)}
+                                onClick={() => handleStatusChange(article.id, 'DRAFT')}
                                 disabled={mutationLoading}
                               >
                                 Send Back to Draft
                               </DropdownMenuItem>
                             </>
                           )}
-                          {article.status === ArticleStatus.PUBLISHED && isAdmin && (
+                          {article.status === 'PUBLISHED' && isAdmin && (
                             <DropdownMenuItem 
-                              onClick={() => handleStatusChange(article.id, ArticleStatus.ARCHIVED)}
+                              onClick={() => handleStatusChange(article.id, 'ARCHIVED')}
                               disabled={mutationLoading}
                             >
                               Archive

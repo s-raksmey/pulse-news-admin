@@ -533,10 +533,10 @@ export const EditorDashboard: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {action.articleTitle}
+                          {action.title}
                         </p>
                         <p className="text-xs text-gray-500">
-                          by {action.authorName} • {formatTimeAgo(action.timestamp)}
+                          by {action.user?.name || 'Unknown'} • {formatTimeAgo(action.timestamp)}
                         </p>
                       </div>
                     </div>
@@ -633,3 +633,5 @@ export const EditorDashboard: React.FC = () => {
     </div>
   );
 };
+
+export default EditorDashboard;

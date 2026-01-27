@@ -15,11 +15,7 @@ export function getAuthenticatedGqlClient(token?: string) {
       requestMiddleware: (request) => {
         // Add debug logging if enabled
         if (process.env.NEXT_PUBLIC_DEBUG_GRAPHQL === 'true') {
-          console.log('GraphQL Request:', {
-            query: request.query,
-            variables: request.variables,
-            url: request.url
-          });
+          console.log('GraphQL Request:', request);
         }
         return request;
       },
@@ -30,11 +26,9 @@ export function getAuthenticatedGqlClient(token?: string) {
         }
         
         // Check for null data responses that might indicate resolver issues
-        if (response && response.data && Object.values(response.data).some(value => value === null)) {
+        if (response && 'data' in response && response.data && Object.values(response.data).some(value => value === null)) {
           console.warn('GraphQL response contains null values:', response.data);
         }
-        
-        return response;
       }
     }
   );

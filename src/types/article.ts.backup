@@ -131,4 +131,3 @@ export interface ArticleResponse {
   articleById?: Article;
   articleBySlug?: Article;
 }
-
