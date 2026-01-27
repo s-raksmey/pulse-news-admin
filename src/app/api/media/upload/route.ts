@@ -147,7 +147,7 @@ export async function POST(req: Request) {
     // Process images
     if (mediaType === 'image' && file.type !== 'image/gif' && file.type !== 'image/svg+xml') {
       const processed = await processImage(buffer, options);
-      processedBuffer = processed.buffer;
+      processedBuffer = Buffer.from(processed.buffer);
       width = processed.width;
       height = processed.height;
     } else if (mediaType === 'image') {

@@ -1,11 +1,35 @@
-// Re-export types from the GraphQL service for consistency
-export type {
-  Setting,
-  UpdateSettingInput,
-  SettingType
-} from '../services/settings.gql';
+// Re-export constants from the GraphQL service for consistency
+export { SETTING_CATEGORIES } from '@/services/settings.gql';
 
-export { SETTING_CATEGORIES } from '../services/settings.gql';
+// Define types directly to avoid import issues
+export enum SettingType {
+  SITE = 'SITE',
+  EMAIL = 'EMAIL',
+  SEO = 'SEO',
+  CONTENT = 'CONTENT',
+  USER_MANAGEMENT = 'USER_MANAGEMENT',
+  API = 'API',
+  THEME = 'THEME',
+  MAINTENANCE = 'MAINTENANCE'
+}
+
+export interface Setting {
+  id: string;
+  key: string;
+  value: any;
+  type: SettingType;
+  label: string;
+  description?: string | null;
+  isPublic: boolean;
+  isRequired: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateSettingInput {
+  key: string;
+  value: any;
+}
 
 // Additional types for the UI components
 export interface SettingFormData {

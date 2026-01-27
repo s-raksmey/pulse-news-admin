@@ -41,17 +41,17 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
     <div className="min-h-screen bg-gray-50">
       {/* Admin Dashboard */}
       <PermissionGuard roles={['ADMIN']} fallback={null}>
-        <AdminDashboard stats={adminStats} />
+        <AdminDashboard />
       </PermissionGuard>
 
       {/* Editor Dashboard */}
       <PermissionGuard roles={['EDITOR']} fallback={null}>
-        <EditorDashboard stats={editorStats} />
+        <EditorDashboard />
       </PermissionGuard>
 
       {/* Author Dashboard */}
       <PermissionGuard roles={['AUTHOR']} fallback={null}>
-        <AuthorDashboard stats={authorStats} />
+        <AuthorDashboard />
       </PermissionGuard>
 
       {/* Fallback for unknown roles */}
@@ -74,4 +74,3 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
 };
 
 export default RoleDashboard;
-

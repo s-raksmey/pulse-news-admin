@@ -485,3 +485,5 @@ export const AuthorDashboard: React.FC = () => {
     </div>
   );
 };
+
+export default AuthorDashboard;

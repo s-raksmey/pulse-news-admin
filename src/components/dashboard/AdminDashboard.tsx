@@ -567,7 +567,7 @@ export const AdminDashboard: React.FC = () => {
                       <Activity className="h-5 w-5 text-orange-600" />
                     </div>
                     <Badge 
-                      variant={systemHealth?.activeConnections > 100 ? "default" : "secondary"} 
+                      variant={(systemHealth?.activeConnections ?? 0) > 100 ? "default" : "secondary"} 
                       className="text-xs"
                     >
                       Live
@@ -960,10 +960,10 @@ export const AdminDashboard: React.FC = () => {
                       <Clock className="h-5 w-5 text-orange-600" />
                     </div>
                     <Badge 
-                      variant={dashboardStats?.pendingReviews > 0 ? "default" : "secondary"} 
+                      variant={(dashboardStats?.pendingReviews ?? 0) > 0 ? "default" : "secondary"} 
                       className="text-xs"
                     >
-                      {dashboardStats?.pendingReviews > 0 ? 'Pending' : 'Clear'}
+                      {(dashboardStats?.pendingReviews ?? 0) > 0 ? 'Pending' : 'Clear'}
                     </Badge>
                   </div>
                   <div>
@@ -1142,10 +1142,10 @@ export const AdminDashboard: React.FC = () => {
                       <Clock className="h-5 w-5 text-orange-600" />
                     </div>
                     <Badge 
-                      variant={dashboardStats?.myPendingArticles > 0 ? "default" : "secondary"} 
+                      variant={(dashboardStats?.myPendingArticles ?? 0) > 0 ? "default" : "secondary"} 
                       className="text-xs"
                     >
-                      {dashboardStats?.myPendingArticles > 0 ? 'Pending' : 'Clear'}
+                      {(dashboardStats?.myPendingArticles ?? 0) > 0 ? 'Pending' : 'Clear'}
                     </Badge>
                   </div>
                   <div>
@@ -1451,3 +1451,5 @@ export const AdminDashboard: React.FC = () => {
 
   return renderRoleBasedDashboard();
 };
+
+export default AdminDashboard;
