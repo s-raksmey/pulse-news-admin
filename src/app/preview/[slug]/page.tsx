@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useGraphQL } from '@/hooks/useGraphQL';
+import { useArticles, useArticleMutations } from '@/hooks/useGraphQL';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Permission } from '@/components/permissions/PermissionGuard';
 import ArticlePreview from '@/components/preview/ArticlePreview';
@@ -44,7 +44,8 @@ export default function ArticlePreviewPage() {
   const router = useRouter();
   const slug = params.slug as string;
   
-  const { getArticleBySlug, updateArticle } = useGraphQL();
+  const { getArticleBySlug } = useArticles();
+  const { setArticleStatus } = useArticleMutations();
   const { userRole, hasPermission, user, isLoading: permissionsLoading } = usePermissions();
   
   const [article, setArticle] = useState<Article | null>(null);
@@ -109,7 +110,7 @@ export default function ArticlePreviewPage() {
     
     try {
       setUpdating(true);
-      await updateArticle(article.id, { status: 'PUBLISHED' });
+      await setArticleStatus(article.id, 'PUBLISHED');
       setArticle({ ...article, status: 'PUBLISHED' });
       // You might want to show a success toast here
       alert('Article published successfully!');
@@ -126,7 +127,7 @@ export default function ArticlePreviewPage() {
     
     try {
       setUpdating(true);
-      await updateArticle(article.id, { status: 'PUBLISHED' });
+      await setArticleStatus(article.id, 'PUBLISHED');
       setArticle({ ...article, status: 'PUBLISHED' });
       alert('Article approved and published!');
     } catch (err) {
@@ -145,10 +146,7 @@ export default function ArticlePreviewPage() {
     
     try {
       setUpdating(true);
-      await updateArticle(article.id, { 
-        status: 'DRAFT',
-        // You might want to add a rejection reason field
-      });
+      await setArticleStatus(article.id, 'DRAFT');
       setArticle({ ...article, status: 'DRAFT' });
       alert('Article rejected and sent back to draft.');
     } catch (err) {
