@@ -195,11 +195,8 @@ export default function EditArticlePage() {
   }
 
   function preview() {
-    if (!slug) {
-      alert("Please set a slug before previewing.");
-      return;
-    }
-    window.open(`/preview/${slug}`, "_blank");
+    // Use article ID for preview instead of slug to avoid "article not found" issues
+    window.open(`/preview/id/${id}`, "_blank");
   }
 
   if (loading) {
@@ -216,7 +213,7 @@ export default function EditArticlePage() {
         </div>
 
         <div className="flex gap-2">
-          <Button variant="outline" onClick={preview} disabled={!slug}>
+          <Button variant="outline" onClick={preview}>
             Preview
           </Button>
           <Button variant="outline" onClick={togglePublish} disabled={saving}>
