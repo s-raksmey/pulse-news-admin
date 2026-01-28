@@ -7,7 +7,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Permission } from '@/components/permissions/PermissionGuard';
 import ArticlePreview from '@/components/preview/ArticlePreview';
 import PreviewHeader from '@/components/preview/PreviewHeader';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+// Removed Alert import - using inline div pattern instead
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface Article {
@@ -178,12 +178,14 @@ export default function ArticlePreviewPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-2xl mx-auto pt-16 px-6">
-          <Alert className="border-red-200 bg-red-50">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
-              {error}
-            </AlertDescription>
-          </Alert>
+          <div className="rounded-md border border-red-200 bg-red-50 p-4">
+            <div className="flex items-center">
+              <AlertTriangle className="h-4 w-4 text-red-600 mr-2" />
+              <div className="text-red-800">
+                {error}
+              </div>
+            </div>
+          </div>
           
           <div className="mt-6 text-center">
             <button
@@ -245,4 +247,3 @@ export default function ArticlePreviewPage() {
     </div>
   );
 }
-

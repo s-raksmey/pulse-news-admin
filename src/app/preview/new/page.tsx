@@ -6,7 +6,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Permission } from '@/components/permissions/PermissionGuard';
 import ArticlePreview from '@/components/preview/ArticlePreview';
 import PreviewHeader from '@/components/preview/PreviewHeader';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+// Removed Alert import - using inline div pattern instead
 import { AlertTriangle, FileText } from 'lucide-react';
 
 interface NewArticleData {
@@ -113,12 +113,14 @@ export default function NewArticlePreviewPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-2xl mx-auto pt-16 px-6">
-          <Alert className="border-red-200 bg-red-50">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
-              {error}
-            </AlertDescription>
-          </Alert>
+          <div className="rounded-md border border-red-200 bg-red-50 p-4">
+            <div className="flex items-center">
+              <AlertTriangle className="h-4 w-4 text-red-600 mr-2" />
+              <div className="text-red-800">
+                {error}
+              </div>
+            </div>
+          </div>
           
           <div className="mt-6 text-center">
             <button
@@ -191,12 +193,14 @@ export default function NewArticlePreviewPage() {
 
       {/* New Article Notice */}
       <div className="max-w-4xl mx-auto px-6 py-4">
-        <Alert className="border-blue-200 bg-blue-50">
-          <FileText className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            This is a preview of your new article. Changes made in the editor will be reflected here after saving.
-          </AlertDescription>
-        </Alert>
+        <div className="rounded-md border border-blue-200 bg-blue-50 p-4">
+          <div className="flex items-center">
+            <FileText className="h-4 w-4 text-blue-600 mr-2" />
+            <div className="text-blue-800">
+              This is a preview of your new article. Changes made in the editor will be reflected here after saving.
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Article Preview */}
@@ -206,4 +210,3 @@ export default function NewArticlePreviewPage() {
     </div>
   );
 }
-
