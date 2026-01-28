@@ -57,15 +57,53 @@ export default function ArticlePreviewPage() {
   const canPreview = (article: Article | null) => {
     if (!article || !user) return false;
     
-    // Admins and Editors can preview any article
-    if (hasPermission(Permission.UPDATE_ANY_ARTICLE)) return true;
+    // Get user role directly from user object
+    const currentUserRole = user.role?.toString().toUpperCase();
     
-    // Authors can only preview their own articles
-    if (hasPermission(Permission.UPDATE_OWN_ARTICLE)) {
-      // Check if the current user is the author
-      return article.authorName === user.email || article.authorId === user.id;
+    console.log('Preview permission check:', {
+      userRole: currentUserRole,
+      userEmail: user.email,
+      userName: user.name,
+      userId: user.id,
+      articleAuthorName: article.authorName,
+      articleAuthorId: article.authorId,
+    });
+    
+    // ADMIN: Full access
+    if (currentUserRole === 'ADMIN') {
+      console.log('Access granted: User is ADMIN');
+      return true;
     }
     
+    // EDITOR: Full access
+    if (currentUserRole === 'EDITOR') {
+      console.log('Access granted: User is EDITOR');
+      return true;
+    }
+    
+    // AUTHOR: Own articles only
+    if (currentUserRole === 'AUTHOR') {
+      // Check if the current user is the author by multiple criteria
+      const isAuthor = article.authorName === user.email || 
+                      article.authorName === user.name ||
+                      article.authorId === user.id ||
+                      article.authorId === user.email;
+      
+      console.log('AUTHOR permission check:', {
+        isAuthor,
+        authorNameMatchesEmail: article.authorName === user.email,
+        authorNameMatchesName: article.authorName === user.name,
+        authorIdMatchesUserId: article.authorId === user.id,
+        authorIdMatchesEmail: article.authorId === user.email
+      });
+      
+      if (isAuthor) {
+        console.log('Access granted: User is article author');
+        return true;
+      }
+    }
+    
+    console.log('Access denied: No matching role or ownership');
     return false;
   };
 
