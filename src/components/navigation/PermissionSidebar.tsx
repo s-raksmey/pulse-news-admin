@@ -163,8 +163,6 @@ export function PermissionSidebar({ collapsed, onToggle, className }: Permission
     categories: 8,
     media: 156,
     reviewQueue: 5,
-    drafts: 12,
-    published: 30,
   };
 
   const navigationItems = getNavigationItems(counts, userRole);
@@ -306,4 +304,3 @@ export function PermissionSidebar({ collapsed, onToggle, className }: Permission
 }
 
 export default PermissionSidebar;
-
