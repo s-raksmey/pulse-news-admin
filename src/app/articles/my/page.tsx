@@ -57,10 +57,10 @@ export default function MyArticlesPage() {
       authorId: user.id // Filter to only current user's articles
     });
     
-    if (response?.data?.articles) {
-      console.log('🔍 Frontend Debug - My articles loaded:', response.data.articles.length, 'articles');
-      console.log('🔍 Frontend Debug - Sample article IDs:', response.data.articles.slice(0, 3).map((a: Article) => a.id));
-      setArticles(response.data.articles);
+    if (response?.articles) {
+      console.log('🔍 Frontend Debug - My articles loaded:', response.articles.length, 'articles');
+      console.log('🔍 Frontend Debug - Sample article IDs:', response.articles.slice(0, 3).map((a: Article) => a.id));
+      setArticles(response.articles);
     } else {
       console.log('🔍 Frontend Debug - No articles data in response:', response);
       setArticles([]);
