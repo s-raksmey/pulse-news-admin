@@ -56,14 +56,49 @@ export default function ArticlePreviewByIdPage() {
   const canPreview = (article: Article | null) => {
     if (!article || !user) return false;
     
+    // Get user role for role-based checks
+    const currentUserRole = userRole || user.role?.toString().toUpperCase();
+    
+    // ADMIN: Can preview any article
+    if (currentUserRole === 'ADMIN') return true;
+    
+    // EDITOR: Can preview any article  
+    if (currentUserRole === 'EDITOR') return true;
+    
+    // AUTHOR: Can preview their own articles
+    if (currentUserRole === 'AUTHOR') {
+      // Check if the current user is the author by multiple criteria
+      const isAuthor = article.authorName === user.email || 
+                      article.authorName === user.name ||
+                      article.authorId === user.id ||
+                      article.authorId === user.email;
+      return isAuthor;
+    }
+    
+    // Fallback: Check using permission system
     // Admins and Editors can preview any article
     if (hasPermission(Permission.UPDATE_ANY_ARTICLE)) return true;
     
-    // Authors can only preview their own articles
+    // Authors can preview their own articles
     if (hasPermission(Permission.UPDATE_OWN_ARTICLE)) {
-      // Check if the current user is the author
-      return article.authorName === user.email || article.authorId === user.id;
+      const isAuthor = article.authorName === user.email || 
+                      article.authorName === user.name ||
+                      article.authorId === user.id ||
+                      article.authorId === user.email;
+      return isAuthor;
     }
+    
+    // Debug logging to help troubleshoot
+    console.log('Preview permission denied:', {
+      userRole: currentUserRole,
+      userEmail: user.email,
+      userName: user.name,
+      userId: user.id,
+      articleAuthorName: article.authorName,
+      articleAuthorId: article.authorId,
+      hasUpdateAny: hasPermission(Permission.UPDATE_ANY_ARTICLE),
+      hasUpdateOwn: hasPermission(Permission.UPDATE_OWN_ARTICLE)
+    });
     
     return false;
   };
