@@ -137,16 +137,26 @@ export default function NewArticlePage() {
     const contentJson: OutputData =
       (await editorRef.current?.save()) ?? { blocks: [] };
 
-    sessionStorage.setItem(
+    // Get category data if categorySlug is selected
+    let categoryData = null;
+    if (categorySlug) {
+      // You might want to fetch category details here
+      categoryData = {
+        id: categorySlug,
+        name: categorySlug, // This should ideally be the category name
+        slug: categorySlug
+      };
+    }
+
+    localStorage.setItem(
       "preview:new-article",
       JSON.stringify({
         title,
-        slug: slug || slugify(title),
         excerpt,
-        authorName, // ✅ ADDED
-        categorySlug,
+        contentJson: JSON.stringify(contentJson),
         topic,
-        content: contentJson,
+        coverImageUrl: "", // Add if you have cover image functionality
+        category: categoryData,
       })
     );
 
