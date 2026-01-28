@@ -39,8 +39,6 @@ export const getNavigationItems = (
     categories: number; 
     media: number;
     reviewQueue?: number;
-    drafts?: number;
-    published?: number;
   },
   userRole?: string
 ): NavigationItem[] => {
@@ -76,22 +74,6 @@ export const getNavigationItems = (
           icon: FileText,
           description: "Your articles",
           permissions: [Permission.UPDATE_OWN_ARTICLE],
-        },
-        {
-          name: "Drafts",
-          href: "/articles/drafts",
-          icon: FileText,
-          badge: counts.drafts ? counts.drafts.toString() : null,
-          description: "Draft articles",
-          permissions: [Permission.CREATE_ARTICLE],
-        },
-        {
-          name: "Published",
-          href: "/articles/published",
-          icon: FileText,
-          badge: counts.published ? counts.published.toString() : null,
-          description: "Published articles",
-          permissions: [Permission.CREATE_ARTICLE],
         },
       ],
     },
@@ -309,4 +291,3 @@ export const getBreadcrumbs = (pathname: string): { name: string; href: string }
 };
 
 export default getNavigationItems;
-
